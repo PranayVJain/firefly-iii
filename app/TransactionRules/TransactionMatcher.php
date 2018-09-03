@@ -22,8 +22,9 @@ declare(strict_types=1);
 
 namespace FireflyIII\TransactionRules;
 
-use FireflyIII\Helpers\Collector\JournalCollectorInterface;
+use FireflyIII\Helpers\Collector\TransactionCollectorInterface;
 use FireflyIII\Models\Rule;
+use FireflyIII\Models\RuleTrigger;
 use FireflyIII\Models\Transaction;
 use FireflyIII\Models\TransactionType;
 use Illuminate\Support\Collection;
@@ -35,16 +36,29 @@ use Log;
  */
 class TransactionMatcher
 {
+    /** @var string */
+    private $exactAmount;
     /** @var int Limit of matcher */
     private $limit = 10;
+    /** @var string */
+    private $maxAmount;
+    /** @var string */
+    private $minAmount;
     /** @var int Maximum number of transaction to search in (for performance reasons) * */
     private $range = 200;
     /** @var Rule The rule to apply */
     private $rule;
+    /** @var bool */
+    private $strict;
     /** @var array Types that can be matched using this matcher */
     private $transactionTypes = [TransactionType::DEPOSIT, TransactionType::WITHDRAWAL, TransactionType::TRANSFER];
     /** @var array List of triggers to match */
     private $triggers = [];
+
+    public function __construct()
+    {
+        $this->strict = false;
+    }
 
     /**
      * This method will search the user's transaction journal (with an upper limit of $range) for
@@ -54,15 +68,17 @@ class TransactionMatcher
      * @return Collection
      * @throws \FireflyIII\Exceptions\FireflyException
      */
-    public function findTransactionsByRule()
+    public function findTransactionsByRule(): Collection
     {
-        if (0 === count($this->rule->ruleTriggers)) {
+        if (0 === \count($this->rule->ruleTriggers)) {
             return new Collection;
         }
 
         // Variables used within the loop
-        $processor = Processor::make($this->rule, false);
-        $result    = $this->runProcessor($processor);
+        /** @var Processor $processor */
+        $processor = app(Processor::class);
+        $processor->make($this->rule, false);
+        $result = $this->runProcessor($processor);
 
         // If the list of matchingTransactions is larger than the maximum number of results
         // (e.g. if a large percentage of the transactions match), truncate the list
@@ -81,13 +97,16 @@ class TransactionMatcher
      */
     public function findTransactionsByTriggers(): Collection
     {
-        if (0 === count($this->triggers)) {
+        if (0 === \count($this->triggers)) {
             return new Collection;
         }
 
         // Variables used within the loop
-        $processor = Processor::makeFromStringArray($this->triggers);
-        $result    = $this->runProcessor($processor);
+        /** @var Processor $processor */
+        $processor = app(Processor::class);
+        $processor->makeFromStringArray($this->triggers);
+        $processor->setStrict($this->strict);
+        $result = $this->runProcessor($processor);
 
         // If the list of matchingTransactions is larger than the maximum number of results
         // (e.g. if a large percentage of the transactions match), truncate the list
@@ -169,13 +188,55 @@ class TransactionMatcher
     }
 
     /**
+     * @return bool
+     */
+    public function isStrict(): bool
+    {
+        return $this->strict;
+    }
+
+    /**
+     * @param bool $strict
+     */
+    public function setStrict(bool $strict): void
+    {
+        $this->strict = $strict;
+    }
+
+    /**
      * Set rule
      *
      * @param Rule $rule
      */
-    public function setRule(Rule $rule)
+    public function setRule(Rule $rule): void
     {
         $this->rule = $rule;
+    }
+
+    /**
+     *
+     */
+    private function readTriggers(): void
+    {
+        $valid = ['amount_less', 'amount_more', 'amount_exactly'];
+        if (null !== $this->rule) {
+            $allTriggers = $this->rule->ruleTriggers()->whereIn('trigger_type', $valid)->get();
+            /** @var RuleTrigger $trigger */
+            foreach ($allTriggers as $trigger) {
+                if ('amount_less' === $trigger->trigger_type) {
+                    $this->maxAmount = $trigger->trigger_value;
+                    Log::debug(sprintf('Set max amount to be %s', $trigger->trigger_value));
+                }
+                if ('amount_more' === $trigger->trigger_type) {
+                    $this->minAmount = $trigger->trigger_value;
+                    Log::debug(sprintf('Set min amount to be %s', $trigger->trigger_value));
+                }
+                if ('amount_exactly' === $trigger->trigger_type) {
+                    $this->exactAmount = $trigger->trigger_value;
+                    Log::debug(sprintf('Set exact amount to be %s', $trigger->trigger_value));
+                }
+            }
+        }
     }
 
     /**
@@ -184,10 +245,15 @@ class TransactionMatcher
      * @param Processor $processor
      *
      * @return Collection
-     * @throws \FireflyIII\Exceptions\FireflyException
      */
     private function runProcessor(Processor $processor): Collection
     {
+        // since we have a rule in $this->rule, we can add some of the triggers
+        // to the Journal Collector.
+        // Firefly III will then have to search through less transactions.
+        $this->readTriggers();
+
+
         // Start a loop to fetch batches of transactions. The loop will finish if:
         //   - all transactions have been fetched from the database
         //   - the maximum number of transactions to return has been found
@@ -198,11 +264,25 @@ class TransactionMatcher
         $result    = new Collection();
         do {
             // Fetch a batch of transactions from the database
-            /** @var JournalCollectorInterface $collector */
-            $collector = app(JournalCollectorInterface::class);
+            /** @var TransactionCollectorInterface $collector */
+            $collector = app(TransactionCollectorInterface::class);
             $collector->setUser(auth()->user());
             $collector->setAllAssetAccounts()->setLimit($pageSize)->setPage($page)->setTypes($this->transactionTypes);
-            $set = $collector->getPaginatedJournals();
+            if (null !== $this->maxAmount) {
+                Log::debug(sprintf('Amount must be less than %s', $this->maxAmount));
+                $collector->amountLess($this->maxAmount);
+            }
+            if (null !== $this->minAmount) {
+                Log::debug(sprintf('Amount must be more than %s', $this->minAmount));
+                $collector->amountMore($this->minAmount);
+            }
+            if (null !== $this->exactAmount) {
+                Log::debug(sprintf('Amount must be exactly %s', $this->exactAmount));
+                $collector->amountIs($this->exactAmount);
+            }
+
+
+            $set = $collector->getPaginatedTransactions();
             Log::debug(sprintf('Found %d journals to check. ', $set->count()));
 
             // Filter transactions that match the given triggers.
@@ -223,7 +303,7 @@ class TransactionMatcher
 
             // Update counters
             ++$page;
-            $processed += count($set);
+            $processed += \count($set);
 
             Log::debug(sprintf('Page is now %d, processed is %d', $page, $processed));
 

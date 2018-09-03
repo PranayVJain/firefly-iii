@@ -44,7 +44,7 @@ class JournalUpdateServiceTest extends TestCase
      * @covers \FireflyIII\Services\Internal\Update\JournalUpdateService
      * @covers \FireflyIII\Services\Internal\Support\JournalServiceTrait
      */
-    public function testUpdateBasic()
+    public function testUpdateBasic(): void
     {
         // mock other stuff:
         $transactionFactory = $this->mock(TransactionFactory::class);
@@ -61,11 +61,12 @@ class JournalUpdateServiceTest extends TestCase
         $tagFactory->shouldReceive('setUser');
         $metaFactory->shouldReceive('setUser');
 
+        $metaFactory->shouldReceive('updateOrCreate');
 
         /** @var TransactionJournal $journal */
         $journal = $this->user()->transactionJournals()->where('transaction_type_id', 2)->first();
         $data    = [
-            'description'  => 'Updated journal #' . random_int(1, 1000),
+            'description'  => 'Updated journal #' . random_int(1, 10000),
             'date'         => new Carbon('2018-01-01'),
             'bill_id'      => null,
             'bill_name'    => null,
@@ -86,7 +87,7 @@ class JournalUpdateServiceTest extends TestCase
      * @covers \FireflyIII\Services\Internal\Update\JournalUpdateService
      * @covers \FireflyIII\Services\Internal\Support\JournalServiceTrait
      */
-    public function testUpdateBasicEmptyNote()
+    public function testUpdateBasicEmptyNote(): void
     {
         // mock other stuff:
         $transactionFactory = $this->mock(TransactionFactory::class);
@@ -102,12 +103,13 @@ class JournalUpdateServiceTest extends TestCase
         $transactionFactory->shouldReceive('setUser');
         $tagFactory->shouldReceive('setUser');
         $metaFactory->shouldReceive('setUser');
+        $metaFactory->shouldReceive('updateOrCreate');
 
 
         /** @var TransactionJournal $journal */
         $journal = $this->user()->transactionJournals()->inRandomOrder()->where('transaction_type_id', 2)->first();
         $data    = [
-            'description'  => 'Updated journal #' . random_int(1, 1000),
+            'description'  => 'Updated journal #' . random_int(1, 10000),
             'date'         => new Carbon('2018-01-01'),
             'bill_id'      => null,
             'bill_name'    => null,
@@ -128,46 +130,37 @@ class JournalUpdateServiceTest extends TestCase
     /**
      * @covers \FireflyIII\Services\Internal\Update\JournalUpdateService
      */
-    public function testUpdateBudget()
+    public function testUpdateBudget(): void
     {
         $budget  = $this->user()->budgets()->first();
         $service = $this->mock(TransactionUpdateService::class);
         $service->shouldReceive('setUser');
         $service->shouldReceive('updateBudget')->withArgs([Mockery::any(), $budget->id])->twice();
 
-
-        do {
-            /** @var TransactionJournal $journal */
-            $journal = $this->user()->transactionJournals()->inRandomOrder()->where('transaction_type_id', 1)->first();
-            $count   = $journal->transactions()->count();
-        } while ($count !== 2);
+        $withdrawal = $this->getRandomWithdrawal();
 
         // call update service to update budget. Should call transaction service twice.
         /** @var JournalUpdateService $service */
         $service = app(JournalUpdateService::class);
-        $service->updateBudget($journal, $budget->id);
+        $service->updateBudget($withdrawal, $budget->id);
     }
 
     /**
      * @covers \FireflyIII\Services\Internal\Update\JournalUpdateService
      */
-    public function testUpdateCategory()
+    public function testUpdateCategory(): void
     {
         $service = $this->mock(TransactionUpdateService::class);
         $service->shouldReceive('setUser');
         $service->shouldReceive('updateCategory')->withArgs([Mockery::any(), 'New category'])->twice();
 
 
-        do {
-            /** @var TransactionJournal $journal */
-            $journal = $this->user()->transactionJournals()->inRandomOrder()->where('transaction_type_id', 1)->first();
-            $count   = $journal->transactions()->count();
-        } while ($count !== 2);
+        $withdrawal = $this->getRandomWithdrawal();
 
         // call update service to update budget. Should call transaction service twice.
         /** @var JournalUpdateService $service */
         $service = app(JournalUpdateService::class);
-        $service->updateCategory($journal, 'New category');
+        $service->updateCategory($withdrawal, 'New category');
     }
 
 
@@ -175,7 +168,7 @@ class JournalUpdateServiceTest extends TestCase
      * @covers \FireflyIII\Services\Internal\Update\JournalUpdateService
      * @covers \FireflyIII\Services\Internal\Support\JournalServiceTrait
      */
-    public function testUpdateLotsOfTransactions()
+    public function testUpdateLotsOfTransactions(): void
     {
         // mock other stuff:
         $transactionFactory = $this->mock(TransactionFactory::class);
@@ -194,12 +187,13 @@ class JournalUpdateServiceTest extends TestCase
         $transactionFactory->shouldReceive('createPair')->times(2);
         $tagFactory->shouldReceive('setUser');
         $metaFactory->shouldReceive('setUser');
+        $metaFactory->shouldReceive('updateOrCreate');
 
 
         /** @var TransactionJournal $journal */
         $journal = $this->user()->transactionJournals()->skip(4)->where('transaction_type_id', 1)->first();
         $data    = [
-            'description'  => 'Updated journal #' . random_int(1, 1000),
+            'description'  => 'Updated journal #' . random_int(1, 10000),
             'date'         => new Carbon('2018-01-01'),
             'bill_id'      => null,
             'bill_name'    => null,

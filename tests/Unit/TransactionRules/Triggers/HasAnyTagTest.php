@@ -32,9 +32,9 @@ use Tests\TestCase;
 class HasAnyTagTest extends TestCase
 {
     /**
-     * @covers \FireflyIII\TransactionRules\Triggers\HasAnyTag::triggered
+     * @covers \FireflyIII\TransactionRules\Triggers\HasAnyTag
      */
-    public function testTriggered()
+    public function testTriggered(): void
     {
         $journal = TransactionJournal::inRandomOrder()->whereNull('deleted_at')->first();
         $tag     = $journal->user->tags()->first();
@@ -48,9 +48,9 @@ class HasAnyTagTest extends TestCase
     }
 
     /**
-     * @covers \FireflyIII\TransactionRules\Triggers\HasAnyTag::triggered
+     * @covers \FireflyIII\TransactionRules\Triggers\HasAnyTag
      */
-    public function testTriggeredNot()
+    public function testTriggeredNot(): void
     {
         $journal = TransactionJournal::inRandomOrder()->whereNull('deleted_at')->first();
         $journal->tags()->detach();
@@ -61,9 +61,9 @@ class HasAnyTagTest extends TestCase
     }
 
     /**
-     * @covers \FireflyIII\TransactionRules\Triggers\HasAnyTag::willMatchEverything
+     * @covers \FireflyIII\TransactionRules\Triggers\HasAnyTag
      */
-    public function testWillMatchEverything()
+    public function testWillMatchEverything(): void
     {
         $value  = '';
         $result = HasAnyTag::willMatchEverything($value);

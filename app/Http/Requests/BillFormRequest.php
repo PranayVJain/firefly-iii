@@ -22,65 +22,68 @@ declare(strict_types=1);
 
 namespace FireflyIII\Http\Requests;
 
+use FireflyIII\Models\Bill;
+
 /**
  * Class BillFormRequest.
  */
 class BillFormRequest extends Request
 {
     /**
+     * Verify the request.
+     *
      * @return bool
      */
-    public function authorize()
+    public function authorize(): bool
     {
         // Only allow logged in users
         return auth()->check();
     }
 
     /**
+     * Returns the data required by the controller.
+     *
      * @return array
      */
-    public function getBillData()
+    public function getBillData(): array
     {
         return [
-            'name'                          => $this->string('name'),
-            'match'                         => $this->string('match'),
-            'amount_min'                    => $this->string('amount_min'),
-            'amount_currency_id_amount_min' => $this->integer('amount_currency_id_amount_min'),
-            'amount_currency_id_amount_max' => $this->integer('amount_currency_id_amount_max'),
-            'amount_max'                    => $this->string('amount_max'),
-            'date'                          => $this->date('date'),
-            'repeat_freq'                   => $this->string('repeat_freq'),
-            'skip'                          => $this->integer('skip'),
-            'automatch'                     => $this->boolean('automatch'),
-            'active'                        => $this->boolean('active'),
-            'notes'                         => $this->string('notes'),
+            'name'          => $this->string('name'),
+            'amount_min'    => $this->string('amount_min'),
+            'currency_id'   => $this->integer('transaction_currency_id'),
+            'currency_code' => '',
+            'amount_max'    => $this->string('amount_max'),
+            'date'          => $this->date('date'),
+            'repeat_freq'   => $this->string('repeat_freq'),
+            'skip'          => $this->integer('skip'),
+            'notes'         => $this->string('notes'),
+            'active'        => $this->boolean('active'),
         ];
     }
 
     /**
+     * Rules for this request.
+     *
      * @return array
      */
-    public function rules()
+    public function rules(): array
     {
-        $nameRule  = 'required|between:1,255|uniqueObjectForUser:bills,name';
-        $matchRule = 'required|between:1,255|uniqueObjectForUser:bills,match';
-        if ($this->integer('id') > 0) {
-            $nameRule  .= ',' . $this->integer('id');
-            $matchRule .= ',' . $this->integer('id');
+        $nameRule = 'required|between:1,255|uniqueObjectForUser:bills,name';
+        /** @var Bill $bill */
+        $bill = $this->route()->parameter('bill');
+        if (null !== $bill) {
+            $nameRule = 'required|between:1,255|uniqueObjectForUser:bills,name,' . $bill->id;
         }
         // is OK
         $rules = [
-            'name'                          => $nameRule,
-            'match'                         => $matchRule,
-            'amount_min'                    => 'required|numeric|more:0',
-            'amount_max'                    => 'required|numeric|more:0',
-            'amount_currency_id_amount_min' => 'required|exists:transaction_currencies,id',
-            'amount_currency_id_amount_max' => 'required|exists:transaction_currencies,id',
-            'date'                          => 'required|date',
-            'repeat_freq'                   => 'required|in:weekly,monthly,quarterly,half-year,yearly',
-            'skip'                          => 'required|between:0,31',
-            'automatch'                     => 'in:1',
-            'active'                        => 'in:1',
+            'name'                    => $nameRule,
+            'amount_min'              => 'required|numeric|more:0',
+            'amount_max'              => 'required|numeric|more:0',
+            'transaction_currency_id' => 'required|exists:transaction_currencies,id',
+            'date'                    => 'required|date',
+            'repeat_freq'             => 'required|in:weekly,monthly,quarterly,half-year,yearly',
+            'skip'                    => 'required|between:0,31',
+            'active'                  => 'boolean',
         ];
 
         return $rules;

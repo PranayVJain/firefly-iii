@@ -28,18 +28,21 @@ use FireflyIII\Factory\TagFactory;
 use FireflyIII\Factory\TransactionJournalMetaFactory;
 use FireflyIII\Models\Note;
 use FireflyIII\Models\TransactionJournal;
+use Log;
 
 /**
  * Trait JournalServiceTrait
  *
- * @package FireflyIII\Services\Internal\Support
  */
 trait JournalServiceTrait
 {
 
     /**
+     * Link tags to journal.
+     *
      * @param TransactionJournal $journal
      * @param array              $data
+     * @SuppressWarnings(PHPMD.CyclomaticComplexity)
      */
     public function connectTags(TransactionJournal $journal, array $data): void
     {
@@ -47,13 +50,15 @@ trait JournalServiceTrait
         $factory = app(TagFactory::class);
         $factory->setUser($journal->user);
         $set = [];
-        if (!is_array($data['tags'])) {
+        if (!\is_array($data['tags'])) {
             return; // @codeCoverageIgnore
         }
         foreach ($data['tags'] as $string) {
-            if (strlen($string) > 0) {
-                $tag   = $factory->findOrCreate($string);
-                $set[] = $tag->id;
+            if (\strlen($string) > 0) {
+                $tag = $factory->findOrCreate($string);
+                if (null !== $tag) {
+                    $set[] = $tag->id;
+                }
             }
         }
         $journal->tags()->sync($set);
@@ -70,7 +75,7 @@ trait JournalServiceTrait
         /** @var BillFactory $factory */
         $factory = app(BillFactory::class);
         $factory->setUser($journal->user);
-        $bill = $factory->find($data['bill_id'], $data['bill_name']);
+        $bill = $factory->find((int)$data['bill_id'], $data['bill_name']);
 
         if (null !== $bill) {
             $journal->bill_id = $bill->id;
@@ -81,7 +86,6 @@ trait JournalServiceTrait
         $journal->bill_id = null;
         $journal->save();
 
-        return;
     }
 
     /**
@@ -91,14 +95,14 @@ trait JournalServiceTrait
      */
     protected function storeMeta(TransactionJournal $journal, array $data, string $field): void
     {
-        if (!isset($data[$field])) {
-            return;
-        }
         $set = [
             'journal' => $journal,
             'name'    => $field,
-            'data'    => $data[$field],
+            'data'    => (string)($data[$field] ?? ''),
         ];
+
+        Log::debug(sprintf('Going to store meta-field "%s", with value "%s".', $set['name'], $set['data']));
+
         /** @var TransactionJournalMetaFactory $factory */
         $factory = app(TransactionJournalMetaFactory::class);
         $factory->updateOrCreate($set);
@@ -111,7 +115,7 @@ trait JournalServiceTrait
     protected function storeNote(TransactionJournal $journal, ?string $notes): void
     {
         $notes = (string)$notes;
-        if (strlen($notes) > 0) {
+        if (\strlen($notes) > 0) {
             $note = $journal->notes()->first();
             if (null === $note) {
                 $note = new Note;
@@ -127,7 +131,6 @@ trait JournalServiceTrait
             $note->delete();
         }
 
-        return;
 
     }
 }

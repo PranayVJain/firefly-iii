@@ -38,7 +38,7 @@ class ListCustomersRequest extends SpectreRequest
     /**
      *
      * @throws \FireflyIII\Exceptions\FireflyException
-     * @throws \FireflyIII\Services\Spectre\Exception\SpectreException
+     * @SuppressWarnings(PHPMD.CyclomaticComplexity)
      */
     public function call(): void
     {
@@ -47,11 +47,11 @@ class ListCustomersRequest extends SpectreRequest
         while ($hasNextPage) {
             Log::debug(sprintf('Now calling ListCustomersRequest for next_id %d', $nextId));
             $parameters = ['from_id' => $nextId];
-            $uri        = '/api/v3/customers/?' . http_build_query($parameters);
+            $uri        = '/api/v4/customers/?' . http_build_query($parameters);
             $response   = $this->sendSignedSpectreGet($uri, []);
 
             // count entries:
-            Log::debug(sprintf('Found %d entries in data-array', count($response['data'])));
+            Log::debug(sprintf('Found %d entries in data-array', \count($response['data'])));
 
             // extract next ID
             $hasNextPage = false;
@@ -59,8 +59,6 @@ class ListCustomersRequest extends SpectreRequest
                 $hasNextPage = true;
                 $nextId      = $response['meta']['next_id'];
                 Log::debug(sprintf('Next ID is now %d.', $nextId));
-            } else {
-                Log::debug('No next page.');
             }
 
             // store customers:

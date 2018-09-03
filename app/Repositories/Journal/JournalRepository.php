@@ -24,14 +24,15 @@ namespace FireflyIII\Repositories\Journal;
 
 use Carbon\Carbon;
 use Exception;
+use FireflyIII\Exceptions\FireflyException;
 use FireflyIII\Factory\TransactionJournalFactory;
 use FireflyIII\Factory\TransactionJournalMetaFactory;
 use FireflyIII\Models\Account;
 use FireflyIII\Models\AccountType;
-use FireflyIII\Models\Note;
 use FireflyIII\Models\PiggyBankEvent;
 use FireflyIII\Models\Transaction;
 use FireflyIII\Models\TransactionJournal;
+use FireflyIII\Models\TransactionJournalMeta;
 use FireflyIII\Models\TransactionType;
 use FireflyIII\Services\Internal\Destroy\JournalDestroyService;
 use FireflyIII\Services\Internal\Update\JournalUpdateService;
@@ -40,10 +41,13 @@ use FireflyIII\User;
 use Illuminate\Support\Collection;
 use Illuminate\Support\MessageBag;
 use Log;
-use Preferences;
 
 /**
  * Class JournalRepository.
+ *
+ * @SuppressWarnings(PHPMD.CouplingBetweenObjects)
+ * @SuppressWarnings(PHPMD.TooManyPublicMethods)
+ * @SuppressWarnings(PHPMD.ExcessiveClassComplexity)
  */
 class JournalRepository implements JournalRepositoryInterface
 {
@@ -51,41 +55,77 @@ class JournalRepository implements JournalRepositoryInterface
     private $user;
 
     /**
+     * Constructor.
+     */
+    public function __construct()
+    {
+        if ('testing' === env('APP_ENV')) {
+            Log::warning(sprintf('%s should not be instantiated in the TEST environment!', \get_class($this)));
+        }
+    }
+
+    /** @noinspection MoreThanThreeArgumentsInspection */
+    /**
      * @param TransactionJournal $journal
      * @param TransactionType    $type
      * @param Account            $source
      * @param Account            $destination
      *
      * @return MessageBag
+     * @SuppressWarnings(PHPMD.CyclomaticComplexity)
+     * @SuppressWarnings(PHPMD.ExcessiveMethodLength)
      */
     public function convert(TransactionJournal $journal, TransactionType $type, Account $source, Account $destination): MessageBag
     {
-        // default message bag that shows errors for everything.
-        $messages = new MessageBag;
-        $messages->add('source_account_revenue', trans('firefly.invalid_convert_selection'));
-        $messages->add('destination_account_asset', trans('firefly.invalid_convert_selection'));
-        $messages->add('destination_account_expense', trans('firefly.invalid_convert_selection'));
-        $messages->add('source_account_asset', trans('firefly.invalid_convert_selection'));
-
         if ($source->id === $destination->id || null === $source->id || null === $destination->id) {
+            // default message bag that shows errors for everything.
+            $messages = new MessageBag;
+            $messages->add('source_account_revenue', (string)trans('firefly.invalid_convert_selection'));
+            $messages->add('destination_account_asset', (string)trans('firefly.invalid_convert_selection'));
+            $messages->add('destination_account_expense', (string)trans('firefly.invalid_convert_selection'));
+            $messages->add('source_account_asset', (string)trans('firefly.invalid_convert_selection'));
+
             return $messages;
         }
 
-        $sourceTransaction             = $journal->transactions()->where('amount', '<', 0)->first();
-        $destinationTransaction        = $journal->transactions()->where('amount', '>', 0)->first();
-        $sourceTransaction->account_id = $source->id;
-        $sourceTransaction->save();
-        $destinationTransaction->account_id = $destination->id;
-        $destinationTransaction->save();
+        $srcTransaction = $journal->transactions()->where('amount', '<', 0)->first();
+        $dstTransaction = $journal->transactions()->where('amount', '>', 0)->first();
+        if (null === $srcTransaction || null === $dstTransaction) {
+            // default message bag that shows errors for everything.
+
+            $messages = new MessageBag;
+            $messages->add('source_account_revenue', (string)trans('firefly.source_or_dest_invalid'));
+            $messages->add('destination_account_asset', (string)trans('firefly.source_or_dest_invalid'));
+            $messages->add('destination_account_expense', (string)trans('firefly.source_or_dest_invalid'));
+            $messages->add('source_account_asset', (string)trans('firefly.source_or_dest_invalid'));
+
+            return $messages;
+        }
+        // update transactions, and update journal:
+
+        $srcTransaction->account_id   = $source->id;
+        $dstTransaction->account_id   = $destination->id;
         $journal->transaction_type_id = $type->id;
+        $dstTransaction->save();
+        $srcTransaction->save();
         $journal->save();
 
         // if journal is a transfer now, remove budget:
         if (TransactionType::TRANSFER === $type->type) {
+
             $journal->budgets()->detach();
+            // also from transactions:
+            foreach ($journal->transactions as $transaction) {
+                $transaction->budgets()->detach();
+            }
+        }
+        // if journal is not a withdrawal, remove the bill ID.
+        if (TransactionType::WITHDRAWAL !== $type->type) {
+            $journal->bill_id = null;
+            $journal->save();
         }
 
-        Preferences::mark();
+        app('preferences')->mark();
 
         return new MessageBag;
     }
@@ -117,19 +157,41 @@ class JournalRepository implements JournalRepositoryInterface
     }
 
     /**
-     * @param int $journalId
+     * Find a journal by its hash.
      *
-     * @return TransactionJournal
+     * @param string $hash
+     *
+     * @return TransactionJournalMeta|null
      */
-    public function find(int $journalId): TransactionJournal
+    public function findByHash(string $hash): ?TransactionJournalMeta
     {
-        /** @var TransactionJournal $journal */
-        $journal = $this->user->transactionJournals()->where('id', $journalId)->first();
-        if (null === $journal) {
-            return new TransactionJournal;
+        $jsonEncode = json_encode($hash);
+        $hashOfHash = hash('sha256', $jsonEncode);
+        Log::debug(sprintf('JSON encoded hash is: %s', $jsonEncode));
+        Log::debug(sprintf('Hash of hash is: %s', $hashOfHash));
+
+        $result = TransactionJournalMeta::withTrashed()
+                                        ->leftJoin('transaction_journals', 'transaction_journals.id', '=', 'journal_meta.transaction_journal_id')
+                                        ->where('hash', $hashOfHash)
+                                        ->where('name', 'importHashV2')
+                                        ->first(['journal_meta.*']);
+        if (null === $result) {
+            Log::debug('Result is null');
         }
 
-        return $journal;
+        return $result;
+    }
+
+    /**
+     * Find a specific journal.
+     *
+     * @param int $journalId
+     *
+     * @return TransactionJournal|null
+     */
+    public function findNull(int $journalId): ?TransactionJournal
+    {
+        return $this->user->transactionJournals()->where('id', $journalId)->first();
     }
 
     /**
@@ -162,24 +224,6 @@ class JournalRepository implements JournalRepositoryInterface
                                   ->first(['transactions.*']);
 
         return $transaction;
-    }
-
-    /**
-     * Get users first transaction journal.
-     *
-     * @deprecated
-     * @return TransactionJournal
-     */
-    public function first(): TransactionJournal
-    {
-        /** @var TransactionJournal $entry */
-        $entry = $this->user->transactionJournals()->orderBy('date', 'ASC')->first(['transaction_journals.*']);
-
-        if (null === $entry) {
-            return new TransactionJournal;
-        }
-
-        return $entry;
     }
 
     /**
@@ -241,6 +285,7 @@ class JournalRepository implements JournalRepositoryInterface
         if (null !== $budget) {
             return $budget->id;
         }
+        /** @noinspection NullPointerExceptionInspection */
         $budget = $journal->transactions()->first()->budgets()->first();
         if (null !== $budget) {
             return $budget->id;
@@ -262,6 +307,7 @@ class JournalRepository implements JournalRepositoryInterface
         if (null !== $category) {
             return $category->name;
         }
+        /** @noinspection NullPointerExceptionInspection */
         $category = $journal->transactions()->first()->categories()->first();
         if (null !== $category) {
             return $category->name;
@@ -278,12 +324,15 @@ class JournalRepository implements JournalRepositoryInterface
      * @param null|string        $field
      *
      * @return string
+     * @SuppressWarnings(PHPMD.CyclomaticComplexity)
+     * @SuppressWarnings(PHPMD.ExcessiveMethodLength)
      */
     public function getJournalDate(TransactionJournal $journal, ?string $field): string
     {
         if (null === $field) {
             return $journal->date->format('Y-m-d');
         }
+        /** @noinspection NotOptimalIfConditionsInspection */
         if (null !== $journal->$field && $journal->$field instanceof Carbon) {
             // make field NULL
             $carbon          = clone $journal->$field;
@@ -291,16 +340,14 @@ class JournalRepository implements JournalRepositoryInterface
             $journal->save();
 
             // create meta entry
-            $journal->setMeta($field, $carbon);
+            $this->setMetaDate($journal, $field, $carbon);
 
             // return that one instead.
             return $carbon->format('Y-m-d');
         }
-        $metaField = $journal->getMeta($field);
+        $metaField = $this->getMetaDate($journal, $field);
         if (null !== $metaField) {
-            $carbon = new Carbon($metaField);
-
-            return $carbon->format('Y-m-d');
+            return $metaField->format('Y-m-d');
         }
 
         return '';
@@ -420,6 +467,7 @@ class JournalRepository implements JournalRepositoryInterface
      * @param string             $field
      *
      * @return null|string
+     * @SuppressWarnings(PHPMD.CyclomaticComplexity)
      */
     public function getMetaField(TransactionJournal $journal, string $field): ?string
     {
@@ -439,8 +487,7 @@ class JournalRepository implements JournalRepositoryInterface
 
         $value = $entry->data;
 
-        // return when array:
-        if (is_array($value)) {
+        if (\is_array($value)) {
             $return = implode(',', $value);
             $cache->store($return);
 
@@ -461,16 +508,6 @@ class JournalRepository implements JournalRepositoryInterface
     }
 
     /**
-     * @param TransactionJournal $journal
-     *
-     * @return Note|null
-     */
-    public function getNote(TransactionJournal $journal): ?Note
-    {
-        return $journal->notes()->first();
-    }
-
-    /**
      * Return text of a note attached to journal, or NULL
      *
      * @param TransactionJournal $journal
@@ -479,7 +516,7 @@ class JournalRepository implements JournalRepositoryInterface
      */
     public function getNoteText(TransactionJournal $journal): ?string
     {
-        $note = $this->getNote($journal);
+        $note = $journal->notes()->first();
         if (null === $note) {
             return null;
         }
@@ -634,29 +671,6 @@ class JournalRepository implements JournalRepositoryInterface
             ]
         );
 
-        return;
-    }
-
-    /**
-     * Set meta field for journal that contains string.
-     *
-     * @param TransactionJournal $journal
-     * @param string             $name
-     * @param string             $value
-     */
-    public function setMetaString(TransactionJournal $journal, string $name, string $value): void
-    {
-        /** @var TransactionJournalMetaFactory $factory */
-        $factory = app(TransactionJournalMetaFactory::class);
-        $factory->updateOrCreate(
-            [
-                'data'    => $value,
-                'journal' => $journal,
-                'name'    => $name,
-            ]
-        );
-
-        return;
     }
 
     /**
@@ -676,7 +690,7 @@ class JournalRepository implements JournalRepositoryInterface
     /**
      * @param User $user
      */
-    public function setUser(User $user)
+    public function setUser(User $user): void
     {
         $this->user = $user;
     }
@@ -686,8 +700,7 @@ class JournalRepository implements JournalRepositoryInterface
      *
      * @return TransactionJournal
      *
-     * @throws \FireflyIII\Exceptions\FireflyException
-     * @throws \FireflyIII\Exceptions\FireflyException
+     * @throws FireflyException
      */
     public function store(array $data): TransactionJournal
     {
@@ -704,6 +717,8 @@ class JournalRepository implements JournalRepositoryInterface
      *
      * @return TransactionJournal
      *
+     * @throws FireflyException
+     * @throws FireflyException
      */
     public function update(TransactionJournal $journal, array $data): TransactionJournal
     {

@@ -22,34 +22,37 @@ declare(strict_types=1);
 
 namespace FireflyIII\Http\Controllers;
 
+use Carbon\Carbon;
 use FireflyIII\Helpers\Attachments\AttachmentHelperInterface;
-use FireflyIII\Helpers\Collector\JournalCollectorInterface;
+use FireflyIII\Helpers\Collector\TransactionCollectorInterface;
 use FireflyIII\Http\Requests\BillFormRequest;
 use FireflyIII\Models\Bill;
-use FireflyIII\Models\Note;
-use FireflyIII\Models\TransactionJournal;
 use FireflyIII\Repositories\Bill\BillRepositoryInterface;
+use FireflyIII\TransactionRules\TransactionMatcher;
 use FireflyIII\Transformers\BillTransformer;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use League\Fractal\Manager;
 use League\Fractal\Resource\Item;
 use League\Fractal\Serializer\DataArraySerializer;
-use Preferences;
 use Symfony\Component\HttpFoundation\ParameterBag;
 use URL;
-use View;
 
 /**
  * Class BillController.
+ *
+ * @SuppressWarnings(PHPMD.CouplingBetweenObjects)
  */
 class BillController extends Controller
 {
     /** @var AttachmentHelperInterface Helper for attachments. */
     private $attachments;
+    /** @var BillRepositoryInterface Bill repository */
+    private $billRepository;
 
     /**
-     *
+     * BillController constructor.
      */
     public function __construct()
     {
@@ -58,13 +61,14 @@ class BillController extends Controller
         $maxFileSize = app('steam')->phpBytes(ini_get('upload_max_filesize'));
         $maxPostSize = app('steam')->phpBytes(ini_get('post_max_size'));
         $uploadSize  = min($maxFileSize, $maxPostSize);
-        View::share('uploadSize', $uploadSize);
+        app('view')->share('uploadSize', $uploadSize);
 
         $this->middleware(
             function ($request, $next) {
-                app('view')->share('title', trans('firefly.bills'));
+                app('view')->share('title', (string)trans('firefly.bills'));
                 app('view')->share('mainTitleIcon', 'fa-calendar-o');
-                $this->attachments = app(AttachmentHelperInterface::class);
+                $this->attachments    = app(AttachmentHelperInterface::class);
+                $this->billRepository = app(BillRepositoryInterface::class);
 
                 return $next($request);
             }
@@ -72,17 +76,22 @@ class BillController extends Controller
     }
 
     /**
+     * Create a new bill.
+     *
      * @param Request $request
      *
-     * @return View
+     * @return \Illuminate\Contracts\View\Factory|\Illuminate\View\View
      */
     public function create(Request $request)
     {
         $periods = [];
-        foreach (config('firefly.bill_periods') as $current) {
-            $periods[$current] = trans('firefly.' . $current);
+        /** @var array $billPeriods */
+        $billPeriods = config('firefly.bill_periods');
+        foreach ($billPeriods as $current) {
+            $periods[$current] = strtolower((string)trans('firefly.repeat_freq_' . $current));
         }
-        $subTitle = trans('firefly.create_new_bill');
+        $subTitle        = (string)trans('firefly.create_new_bill');
+        $defaultCurrency = app('amount')->getDefaultCurrency();
 
         // put previous url in session if not redirect from store (not "create another").
         if (true !== session('bills.create.fromStore')) {
@@ -90,54 +99,63 @@ class BillController extends Controller
         }
         $request->session()->forget('bills.create.fromStore');
 
-        return view('bills.create', compact('periods', 'subTitle'));
+        return view('bills.create', compact('periods', 'subTitle', 'defaultCurrency'));
     }
 
     /**
+     * Delete a bill.
+     *
      * @param Bill $bill
      *
-     * @return View
+     * @return \Illuminate\Contracts\View\Factory|\Illuminate\View\View
      */
     public function delete(Bill $bill)
     {
         // put previous url in session
         $this->rememberPreviousUri('bills.delete.uri');
-        $subTitle = trans('firefly.delete_bill', ['name' => $bill->name]);
+        $subTitle = (string)trans('firefly.delete_bill', ['name' => $bill->name]);
 
         return view('bills.delete', compact('bill', 'subTitle'));
     }
 
     /**
-     * @param Request                 $request
-     * @param BillRepositoryInterface $repository
-     * @param Bill                    $bill
+     * Destroy a bill.
      *
-     * @return \Illuminate\Http\RedirectResponse|\Illuminate\Routing\Redirector
+     * @param Request $request
+     * @param Bill    $bill
+     *
+     * @return RedirectResponse|\Illuminate\Routing\Redirector
      */
-    public function destroy(Request $request, BillRepositoryInterface $repository, Bill $bill)
+    public function destroy(Request $request, Bill $bill)
     {
         $name = $bill->name;
-        $repository->destroy($bill);
+        $this->billRepository->destroy($bill);
 
         $request->session()->flash('success', (string)trans('firefly.deleted_bill', ['name' => $name]));
-        Preferences::mark();
+        app('preferences')->mark();
 
         return redirect($this->getPreviousUri('bills.delete.uri'));
     }
 
     /**
+     * Edit a bill.
+     *
      * @param Request $request
      * @param Bill    $bill
      *
-     * @return View
+     * @return \Illuminate\Contracts\View\Factory|\Illuminate\View\View
      */
     public function edit(Request $request, Bill $bill)
     {
         $periods = [];
-        foreach (config('firefly.bill_periods') as $current) {
-            $periods[$current] = trans('firefly.' . $current);
+        /** @var array $billPeriods */
+        $billPeriods = config('firefly.bill_periods');
+
+        foreach ($billPeriods as $current) {
+            $periods[$current] = (string)trans('firefly.' . $current);
         }
-        $subTitle = trans('firefly.edit_bill', ['name' => $bill->name]);
+
+        $subTitle = (string)trans('firefly.edit_bill', ['name' => $bill->name]);
 
         // put previous url in session if not redirect from store (not "return_to_edit").
         if (true !== session('bills.edit.fromUpdate')) {
@@ -145,37 +163,36 @@ class BillController extends Controller
         }
 
         $currency         = app('amount')->getDefaultCurrency();
-        $bill->amount_min = round($bill->amount_min, $currency->decimal_places);
-        $bill->amount_max = round($bill->amount_max, $currency->decimal_places);
+        $bill->amount_min = round((float)$bill->amount_min, $currency->decimal_places);
+        $bill->amount_max = round((float)$bill->amount_max, $currency->decimal_places);
+        $defaultCurrency  = app('amount')->getDefaultCurrency();
+
+        // code to handle active-checkboxes
+        $hasOldInput = null !== $request->old('_token');
 
         $preFilled = [
-            'notes' => '',
+            'notes'                   => $this->billRepository->getNoteText($bill),
+            'transaction_currency_id' => $bill->transaction_currency_id,
+            'active'                  => $hasOldInput ? (bool)$request->old('active') : $bill->active,
         ];
 
-        /** @var Note $note */
-        $note = $bill->notes()->first();
-        if (null !== $note) {
-            $preFilled['notes'] = $note->text;
-        }
-
         $request->session()->flash('preFilled', $preFilled);
-
         $request->session()->forget('bills.edit.fromUpdate');
 
-        return view('bills.edit', compact('subTitle', 'periods', 'bill'));
+        return view('bills.edit', compact('subTitle', 'periods', 'bill', 'defaultCurrency', 'preFilled'));
     }
 
     /**
-     * @param BillRepositoryInterface $repository
+     * Show all bills.
      *
-     * @return View
+     * @return \Illuminate\Contracts\View\Factory|\Illuminate\View\View
      */
-    public function index(BillRepositoryInterface $repository)
+    public function index()
     {
         $start      = session('start');
         $end        = session('end');
-        $pageSize   = (int)Preferences::get('listPageSize', 50)->data;
-        $paginator  = $repository->getPaginator($pageSize);
+        $pageSize   = (int)app('preferences')->get('listPageSize', 50)->data;
+        $paginator  = $this->billRepository->getPaginator($pageSize);
         $parameters = new ParameterBag();
         $parameters->set('start', $start);
         $parameters->set('end', $end);
@@ -183,7 +200,25 @@ class BillController extends Controller
         /** @var Collection $bills */
         $bills = $paginator->getCollection()->map(
             function (Bill $bill) use ($transformer) {
-                return $transformer->transform($bill);
+                $return             = $transformer->transform($bill);
+                $return['currency'] = $bill->transactionCurrency;
+
+                return $return;
+            }
+        );
+        $bills = $bills->sortBy(
+            function (array $bill) {
+                return (int)!$bill['active'] . strtolower($bill['name']);
+            }
+        );
+
+        // add info about rules:
+        $rules = $this->billRepository->getRulesForBills($paginator->getCollection());
+        $bills = $bills->map(
+            function (array $bill) use ($rules) {
+                $bill['rules'] = $rules[$bill['id']] ?? [];
+
+                return $bill;
             }
         );
 
@@ -193,143 +228,157 @@ class BillController extends Controller
     }
 
     /**
-     * @param Request                 $request
-     * @param BillRepositoryInterface $repository
-     * @param Bill                    $bill
+     * Rescan bills for transactions.
      *
-     * @return \Illuminate\Http\RedirectResponse|\Illuminate\Routing\Redirector
+     * @param Request $request
+     * @param Bill    $bill
+     *
+     * @return RedirectResponse|\Illuminate\Routing\Redirector
+     * @throws \FireflyIII\Exceptions\FireflyException
      */
-    public function rescan(Request $request, BillRepositoryInterface $repository, Bill $bill)
+    public function rescan(Request $request, Bill $bill)
     {
-        if (0 === (int)$bill->active) {
+        if (false === $bill->active) {
             $request->session()->flash('warning', (string)trans('firefly.cannot_scan_inactive_bill'));
-
-            return redirect(URL::previous());
         }
+        if (true === $bill->active) {
+            $set   = $this->billRepository->getRulesForBill($bill);
+            $total = 0;
+            foreach ($set as $rule) {
+                // simply fire off all rules?
+                /** @var TransactionMatcher $matcher */
+                $matcher = app(TransactionMatcher::class);
+                $matcher->setLimit(100000); // large upper limit
+                $matcher->setRange(100000); // large upper limit
+                $matcher->setRule($rule);
+                $matchingTransactions = $matcher->findTransactionsByRule();
+                $total                += $matchingTransactions->count();
+                $this->billRepository->linkCollectionToBill($bill, $matchingTransactions);
+            }
 
-        $journals = $repository->getPossiblyRelatedJournals($bill);
-        /** @var TransactionJournal $journal */
-        foreach ($journals as $journal) {
-            $repository->scan($bill, $journal);
+
+            $request->session()->flash('success', (string)trans('firefly.rescanned_bill', ['total' => $total]));
+            app('preferences')->mark();
         }
-
-        $request->session()->flash('success', (string)trans('firefly.rescanned_bill'));
-        Preferences::mark();
 
         return redirect(URL::previous());
     }
 
     /**
-     * @param Request                 $request
-     * @param BillRepositoryInterface $repository
-     * @param Bill                    $bill
+     * Show a bill.
      *
-     * @return View
+     * @param Request $request
+     * @param Bill    $bill
+     *
+     * @return \Illuminate\Contracts\View\Factory|\Illuminate\View\View
      */
-    public function show(Request $request, BillRepositoryInterface $repository, Bill $bill)
+    public function show(Request $request, Bill $bill)
     {
-        $subTitle       = $bill->name;
-        $start          = session('start');
+        // add info about rules:
+        $rules    = $this->billRepository->getRulesForBill($bill);
+        $subTitle = $bill->name;
+        /** @var Carbon $start */
+        $start = session('start');
+        /** @var Carbon $end */
         $end            = session('end');
         $year           = $start->year;
         $page           = (int)$request->get('page');
-        $pageSize       = (int)Preferences::get('listPageSize', 50)->data;
-        $yearAverage    = $repository->getYearAverage($bill, $start);
-        $overallAverage = $repository->getOverallAverage($bill);
+        $pageSize       = (int)app('preferences')->get('listPageSize', 50)->data;
+        $yearAverage    = $this->billRepository->getYearAverage($bill, $start);
+        $overallAverage = $this->billRepository->getOverallAverage($bill);
         $manager        = new Manager();
         $manager->setSerializer(new DataArraySerializer());
-        $manager->parseIncludes(['attachments','notes']);
+        $manager->parseIncludes(['attachments', 'notes']);
 
         // Make a resource out of the data and
         $parameters = new ParameterBag();
         $parameters->set('start', $start);
         $parameters->set('end', $end);
-        $resource = new Item($bill, new BillTransformer($parameters), 'bill');
-        $object   = $manager->createData($resource)->toArray();
+        $resource                   = new Item($bill, new BillTransformer($parameters), 'bill');
+        $object                     = $manager->createData($resource)->toArray();
+        $object['data']['currency'] = $bill->transactionCurrency;
 
         // use collector:
-        /** @var JournalCollectorInterface $collector */
-        $collector = app(JournalCollectorInterface::class);
+        /** @var TransactionCollectorInterface $collector */
+        $collector = app(TransactionCollectorInterface::class);
         $collector->setAllAssetAccounts()->setBills(new Collection([$bill]))->setLimit($pageSize)->setPage($page)->withBudgetInformation()
                   ->withCategoryInformation();
-        $transactions = $collector->getPaginatedJournals();
+        $transactions = $collector->getPaginatedTransactions();
         $transactions->setPath(route('bills.show', [$bill->id]));
 
 
-        return view('bills.show', compact('transactions', 'yearAverage', 'overallAverage', 'year', 'object', 'bill', 'subTitle'));
+        return view('bills.show', compact('transactions', 'rules', 'yearAverage', 'overallAverage', 'year', 'object', 'bill', 'subTitle'));
     }
 
+
     /**
-     * @param BillFormRequest         $request
-     * @param BillRepositoryInterface $repository
+     * Store a new bill.
      *
-     * @return \Illuminate\Http\RedirectResponse
+     * @param BillFormRequest $request
+     *
+     * @return RedirectResponse
+     *
+     * @SuppressWarnings(PHPMD.CyclomaticComplexity)
+     * @SuppressWarnings(PHPMD.ExcessiveMethodLength)
      */
-    public function store(BillFormRequest $request, BillRepositoryInterface $repository)
+    public function store(BillFormRequest $request): RedirectResponse
     {
-        $billData = $request->getBillData();
-        $bill     = $repository->store($billData);
+        $billData           = $request->getBillData();
+        $billData['active'] = true;
+        $bill               = $this->billRepository->store($billData);
         if (null === $bill) {
             $request->session()->flash('error', (string)trans('firefly.bill_store_error'));
 
             return redirect(route('bills.create'))->withInput();
         }
         $request->session()->flash('success', (string)trans('firefly.stored_new_bill', ['name' => $bill->name]));
-        Preferences::mark();
+        app('preferences')->mark();
 
         /** @var array $files */
         $files = $request->hasFile('attachments') ? $request->file('attachments') : null;
         $this->attachments->saveAttachmentsForModel($bill, $files);
 
-        // flash messages
-        if (count($this->attachments->getMessages()->get('attachments')) > 0) {
+        if (\count($this->attachments->getMessages()->get('attachments')) > 0) {
             $request->session()->flash('info', $this->attachments->getMessages()->get('attachments')); // @codeCoverageIgnore
         }
 
-        if (1 === (int)$request->get('create_another')) {
-            // @codeCoverageIgnoreStart
-            $request->session()->put('bills.create.fromStore', true);
-
-            return redirect(route('bills.create'))->withInput();
-            // @codeCoverageIgnoreEnd
-        }
-
-        // redirect to previous URL.
-        return redirect($this->getPreviousUri('bills.create.uri'));
+        return redirect(route('rules.create-from-bill', [$bill->id]));
     }
 
     /**
-     * @param BillFormRequest         $request
-     * @param BillRepositoryInterface $repository
-     * @param Bill                    $bill
+     * Update a bill.
      *
-     * @return \Illuminate\Http\RedirectResponse
+     * @param BillFormRequest $request
+     * @param Bill            $bill
+     *
+     * @return RedirectResponse
      */
-    public function update(BillFormRequest $request, BillRepositoryInterface $repository, Bill $bill)
+    public function update(BillFormRequest $request, Bill $bill): RedirectResponse
     {
         $billData = $request->getBillData();
-        $bill     = $repository->update($bill, $billData);
+        $bill     = $this->billRepository->update($bill, $billData);
 
         $request->session()->flash('success', (string)trans('firefly.updated_bill', ['name' => $bill->name]));
-        Preferences::mark();
+        app('preferences')->mark();
 
         /** @var array $files */
         $files = $request->hasFile('attachments') ? $request->file('attachments') : null;
         $this->attachments->saveAttachmentsForModel($bill, $files);
 
         // flash messages
-        if (count($this->attachments->getMessages()->get('attachments')) > 0) {
+        if (\count($this->attachments->getMessages()->get('attachments')) > 0) {
             $request->session()->flash('info', $this->attachments->getMessages()->get('attachments')); // @codeCoverageIgnore
         }
+        $redirect = redirect($this->getPreviousUri('bills.edit.uri'));
 
         if (1 === (int)$request->get('return_to_edit')) {
             // @codeCoverageIgnoreStart
             $request->session()->put('bills.edit.fromUpdate', true);
 
-            return redirect(route('bills.edit', [$bill->id]))->withInput(['return_to_edit' => 1]);
+            $redirect = redirect(route('bills.edit', [$bill->id]))->withInput(['return_to_edit' => 1]);
             // @codeCoverageIgnoreEnd
         }
 
-        return redirect($this->getPreviousUri('bills.edit.uri'));
+        return $redirect;
     }
 }

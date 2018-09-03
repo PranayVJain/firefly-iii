@@ -33,9 +33,9 @@ use Tests\TestCase;
 class AmountMoreTest extends TestCase
 {
     /**
-     * @covers \FireflyIII\TransactionRules\Triggers\AmountMore::triggered
+     * @covers \FireflyIII\TransactionRules\Triggers\AmountMore
      */
-    public function testTriggeredExact()
+    public function testTriggeredExact(): void
     {
         $journalRepos = $this->mock(JournalRepositoryInterface::class);
         $journalRepos->shouldReceive('setUser');
@@ -50,9 +50,9 @@ class AmountMoreTest extends TestCase
     }
 
     /**
-     * @covers \FireflyIII\TransactionRules\Triggers\AmountMore::triggered
+     * @covers \FireflyIII\TransactionRules\Triggers\AmountMore
      */
-    public function testTriggeredMore()
+    public function testTriggeredMore(): void
     {
         $journalRepos = $this->mock(JournalRepositoryInterface::class);
         $journalRepos->shouldReceive('setUser');
@@ -67,9 +67,9 @@ class AmountMoreTest extends TestCase
     }
 
     /**
-     * @covers \FireflyIII\TransactionRules\Triggers\AmountMore::triggered
+     * @covers \FireflyIII\TransactionRules\Triggers\AmountMore
      */
-    public function testTriggeredNotMore()
+    public function testTriggeredNotMore(): void
     {
         $journalRepos = $this->mock(JournalRepositoryInterface::class);
         $journalRepos->shouldReceive('setUser');
@@ -84,9 +84,9 @@ class AmountMoreTest extends TestCase
     }
 
     /**
-     * @covers \FireflyIII\TransactionRules\Triggers\AmountMore::willMatchEverything
+     * @covers \FireflyIII\TransactionRules\Triggers\AmountMore
      */
-    public function testWillMatchEverythingNotNull()
+    public function testWillMatchEverythingNotNull(): void
     {
         $value  = '1';
         $result = AmountMore::willMatchEverything($value);
@@ -94,9 +94,9 @@ class AmountMoreTest extends TestCase
     }
 
     /**
-     * @covers \FireflyIII\TransactionRules\Triggers\AmountMore::willMatchEverything
+     * @covers \FireflyIII\TransactionRules\Triggers\AmountMore
      */
-    public function testWillMatchEverythingNull()
+    public function testWillMatchEverythingNull(): void
     {
         $value  = null;
         $result = AmountMore::willMatchEverything($value);
@@ -104,9 +104,9 @@ class AmountMoreTest extends TestCase
     }
 
     /**
-     * @covers \FireflyIII\TransactionRules\Triggers\AmountMore::willMatchEverything
+     * @covers \FireflyIII\TransactionRules\Triggers\AmountMore
      */
-    public function testWillMatchEverythingZero()
+    public function testWillMatchEverythingZero(): void
     {
         $value  = '0';
         $result = AmountMore::willMatchEverything($value);

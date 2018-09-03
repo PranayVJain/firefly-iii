@@ -22,10 +22,11 @@ declare(strict_types=1);
 
 namespace FireflyIII\Http\Controllers\Import;
 
-use FireflyIII\Exceptions\FireflyException;
 use FireflyIII\Http\Controllers\Controller;
-use FireflyIII\Http\Middleware\IsDemoUser;
 use FireflyIII\Import\Prerequisites\PrerequisitesInterface;
+use FireflyIII\Models\ImportJob;
+use FireflyIII\Repositories\ImportJob\ImportJobRepositoryInterface;
+use FireflyIII\User;
 use Illuminate\Http\Request;
 use Log;
 
@@ -35,8 +36,11 @@ use Log;
 class PrerequisitesController extends Controller
 {
 
+    /** @var ImportJobRepositoryInterface The import job repository */
+    private $repository;
+
     /**
-     *
+     * PrerequisitesController constructor.
      */
     public function __construct()
     {
@@ -45,49 +49,60 @@ class PrerequisitesController extends Controller
         $this->middleware(
             function ($request, $next) {
                 app('view')->share('mainTitleIcon', 'fa-archive');
-                app('view')->share('title', trans('firefly.import_index_title'));
+                app('view')->share('title', (string)trans('firefly.import_index_title'));
+                app('view')->share('subTitleIcon', 'fa-check');
+
+                $this->repository = app(ImportJobRepositoryInterface::class);
 
                 return $next($request);
             }
         );
-        $this->middleware(IsDemoUser::class);
     }
 
     /**
-     * Once there are no prerequisites, this method will create an importjob object and
-     * redirect the user to a view where this object can be used by a bank specific
-     * class to process.
+     * This method will process and store import provider global prerequisites
+     * such as API keys.
      *
-     * @param string $bank
+     * @param string    $importProvider
+     * @param ImportJob $importJob
      *
-     * @return \Illuminate\View\View|\Illuminate\Contracts\View\Factory|\Illuminate\Http\RedirectResponse
+     * @return \Illuminate\Contracts\View\Factory|\Illuminate\View\View
      *
-     * @throws FireflyException
+     * @SuppressWarnings(PHPMD.CyclomaticComplexity)
      */
-    public function index(string $bank)
+    public function index(string $importProvider, ImportJob $importJob = null)
     {
-        if (true === !config(sprintf('import.enabled.%s', $bank))) {
-            throw new FireflyException(sprintf('Cannot import from "%s" at this time.', $bank)); // @codeCoverageIgnore
-        }
-        $class = (string)config(sprintf('import.prerequisites.%s', $bank));
-        if (!class_exists($class)) {
-            throw new FireflyException(sprintf('No class to handle "%s".', $bank)); // @codeCoverageIgnore
+        // catch impossible status:
+        $allowed = ['new'];
+        if (null !== $importJob && !\in_array($importJob->status, $allowed, true)) {
+            Log::error(sprintf('Job has state "%s" but this Prerequisites::index() only accepts %s', $importJob->status, json_encode($allowed)));
+            session()->flash('error', (string)trans('import.bad_job_status', ['status' => $importJob->status]));
+
+            return redirect(route('import.index'));
         }
 
+        app('view')->share('subTitle', (string)trans('import.prerequisites_breadcrumb_' . $importProvider));
+        $class = (string)config(sprintf('import.prerequisites.%s', $importProvider));
+        /** @var User $user */
+        $user = auth()->user();
         /** @var PrerequisitesInterface $object */
         $object = app($class);
-        $object->setUser(auth()->user());
+        $object->setUser($user);
 
-        if ($object->hasPrerequisites()) {
-            $view       = $object->getView();
-            $parameters = ['title' => (string)trans('firefly.import_index_title'), 'mainTitleIcon' => 'fa-archive'];
-            $parameters = array_merge($object->getViewParameters(), $parameters);
+        if (null !== $importJob && $object->isComplete()) {
+            // update job:
+            $this->repository->setStatus($importJob, 'has_prereq');
 
-            return view($view, $parameters);
+            // redirect to job config:
+            return redirect(route('import.job.configuration.index', [$importJob->key]));
         }
 
-        // if no (more) prerequisites, return to create a job:
-        return redirect(route('import.create-job', [$bank]));
+
+        $view       = $object->getView();
+        $parameters = ['title' => (string)trans('firefly.import_index_title'), 'mainTitleIcon' => 'fa-archive', 'importJob' => $importJob];
+        $parameters = array_merge($object->getViewParameters(), $parameters);
+
+        return view($view, $parameters);
     }
 
     /**
@@ -98,42 +113,62 @@ class PrerequisitesController extends Controller
      *
      * @see PrerequisitesInterface::storePrerequisites
      *
-     * @param Request $request
-     * @param string  $bank
+     * @param Request   $request
+     * @param string    $importProvider
+     * @param ImportJob $importJob
      *
      * @return \Illuminate\Http\RedirectResponse|\Illuminate\Routing\Redirector
-     *
-     * @throws FireflyException
+     * @SuppressWarnings(PHPMD.CyclomaticComplexity)
+     * @SuppressWarnings(PHPMD.ExcessiveMethodLength)
      */
-    public function post(Request $request, string $bank)
+    public function post(Request $request, string $importProvider, ImportJob $importJob = null)
     {
-        Log::debug(sprintf('Now in postPrerequisites for %s', $bank));
+        Log::debug(sprintf('Now in postPrerequisites for %s', $importProvider));
 
-        if (true === !config(sprintf('import.enabled.%s', $bank))) {
-            throw new FireflyException(sprintf('Cannot import from "%s" at this time.', $bank)); // @codeCoverageIgnore
+        // catch impossible status:
+        $allowed = ['new'];
+        if (null !== $importJob && !\in_array($importJob->status, $allowed, true)) {
+            Log::error(sprintf('Job has state "%s" but this Prerequisites::post() only accepts %s', $importJob->status, json_encode($allowed)));
+            session()->flash('error', (string)trans('import.bad_job_status', ['status' => $importJob->status]));
+
+            return redirect(route('import.index'));
         }
 
-        $class = (string)config(sprintf('import.prerequisites.%s', $bank));
-        if (!class_exists($class)) {
-            throw new FireflyException(sprintf('Cannot find class %s', $class)); // @codeCoverageIgnore
-        }
+
+        $class = (string)config(sprintf('import.prerequisites.%s', $importProvider));
+        /** @var User $user */
+        $user = auth()->user();
         /** @var PrerequisitesInterface $object */
         $object = app($class);
-        $object->setUser(auth()->user());
-        if (!$object->hasPrerequisites()) {
-            Log::debug(sprintf('No more prerequisites for %s, move to form.', $bank));
-
-            return redirect(route('import.create-job', [$bank]));
-        }
+        $object->setUser($user);
         Log::debug('Going to store entered prerequisites.');
         // store post data
-        $result = $object->storePrerequisites($request);
+        $data   = $request->all();
+        $result = $object->storePrerequisites($data);
         Log::debug(sprintf('Result of storePrerequisites has message count: %d', $result->count()));
 
         if ($result->count() > 0) {
             $request->session()->flash('error', $result->first());
+
+            // redirect back to job, if has job:
+            return redirect(route('import.prerequisites.index', [$importProvider, $importJob->key ?? '']))->withInput();
         }
 
-        return redirect(route('import.prerequisites', [$bank]));
+        // session flash!
+        $request->session()->flash('success', (string)trans('import.prerequisites_saved_for_' . $importProvider));
+
+        // if has job, redirect to global config for provider
+        // if no job, back to index!
+        if (null === $importJob) {
+            return redirect(route('import.index'));
+        }
+
+        // update job:
+        $this->repository->setStatus($importJob, 'has_prereq');
+
+        // redirect to job config:
+        return redirect(route('import.job.configuration.index', [$importJob->key]));
+
+
     }
 }

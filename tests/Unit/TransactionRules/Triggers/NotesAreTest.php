@@ -33,9 +33,9 @@ use Tests\TestCase;
 class NotesAreTest extends TestCase
 {
     /**
-     * @covers \FireflyIII\TransactionRules\Triggers\NotesAre::triggered
+     * @covers \FireflyIII\TransactionRules\Triggers\NotesAre
      */
-    public function testTriggered()
+    public function testTriggered(): void
     {
         $journal = TransactionJournal::inRandomOrder()->whereNull('deleted_at')->first();
         $journal->notes()->delete();
@@ -49,9 +49,9 @@ class NotesAreTest extends TestCase
     }
 
     /**
-     * @covers \FireflyIII\TransactionRules\Triggers\NotesAre::triggered
+     * @covers \FireflyIII\TransactionRules\Triggers\NotesAre
      */
-    public function testTriggeredDifferent()
+    public function testTriggeredDifferent(): void
     {
         $journal = TransactionJournal::inRandomOrder()->whereNull('deleted_at')->first();
         $journal->notes()->delete();
@@ -65,9 +65,9 @@ class NotesAreTest extends TestCase
     }
 
     /**
-     * @covers \FireflyIII\TransactionRules\Triggers\NotesAre::triggered
+     * @covers \FireflyIII\TransactionRules\Triggers\NotesAre
      */
-    public function testTriggeredEmpty()
+    public function testTriggeredEmpty(): void
     {
         $journal = TransactionJournal::inRandomOrder()->whereNull('deleted_at')->first();
         $journal->notes()->delete();
@@ -81,9 +81,9 @@ class NotesAreTest extends TestCase
     }
 
     /**
-     * @covers \FireflyIII\TransactionRules\Triggers\NotesAre::triggered
+     * @covers \FireflyIII\TransactionRules\Triggers\NotesAre
      */
-    public function testTriggeredNone()
+    public function testTriggeredNone(): void
     {
         $journal = TransactionJournal::inRandomOrder()->whereNull('deleted_at')->first();
         $journal->notes()->delete();
@@ -93,9 +93,9 @@ class NotesAreTest extends TestCase
     }
 
     /**
-     * @covers \FireflyIII\TransactionRules\Triggers\NotesAre::willMatchEverything
+     * @covers \FireflyIII\TransactionRules\Triggers\NotesAre
      */
-    public function testWillMatchEverythingNotNull()
+    public function testWillMatchEverythingNotNull(): void
     {
         $value  = 'x';
         $result = NotesAre::willMatchEverything($value);
@@ -103,9 +103,9 @@ class NotesAreTest extends TestCase
     }
 
     /**
-     * @covers \FireflyIII\TransactionRules\Triggers\NotesAre::willMatchEverything
+     * @covers \FireflyIII\TransactionRules\Triggers\NotesAre
      */
-    public function testWillMatchEverythingNull()
+    public function testWillMatchEverythingNull(): void
     {
         $value  = null;
         $result = NotesAre::willMatchEverything($value);

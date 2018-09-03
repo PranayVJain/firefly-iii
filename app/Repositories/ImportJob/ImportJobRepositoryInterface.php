@@ -22,8 +22,12 @@ declare(strict_types=1);
 
 namespace FireflyIII\Repositories\ImportJob;
 
+use FireflyIII\Exceptions\FireflyException;
 use FireflyIII\Models\ImportJob;
+use FireflyIII\Models\Tag;
 use FireflyIII\User;
+use Illuminate\Support\Collection;
+use Illuminate\Support\MessageBag;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
 
 /**
@@ -31,54 +35,48 @@ use Symfony\Component\HttpFoundation\File\UploadedFile;
  */
 interface ImportJobRepositoryInterface
 {
-
     /**
+     * Add message to job.
+     *
      * @param ImportJob $job
-     * @param int       $index
      * @param string    $error
      *
      * @return ImportJob
      */
-    public function addError(ImportJob $job, int $index, string $error): ImportJob;
+    public function addErrorMessage(ImportJob $job, string $error): ImportJob;
 
     /**
+     * Append transactions to array instead of replacing them.
+     *
      * @param ImportJob $job
-     * @param int       $steps
+     * @param array     $transactions
      *
      * @return ImportJob
      */
-    public function addStepsDone(ImportJob $job, int $steps = 1): ImportJob;
+    public function appendTransactions(ImportJob $job, array $transactions): ImportJob;
 
     /**
-     * @param ImportJob $job
-     * @param int       $steps
+     * @param string $importProvider
      *
      * @return ImportJob
      */
-    public function addTotalSteps(ImportJob $job, int $steps = 1): ImportJob;
-
-    /**
-     * Return number of imported rows with this hash value.
-     *
-     * @param string $hash
-     *
-     * @return int
-     */
-    public function countByHash(string $hash): int;
-
-    /**
-     * @param string $type
-     *
-     * @return ImportJob
-     */
-    public function create(string $type): ImportJob;
+    public function create(string $importProvider): ImportJob;
 
     /**
      * @param string $key
      *
-     * @return ImportJob
+     * @return ImportJob|null
      */
-    public function findByKey(string $key): ImportJob;
+    public function findByKey(string $key): ?ImportJob;
+
+    /**
+     * Return all attachments for job.
+     *
+     * @param ImportJob $job
+     *
+     * @return Collection
+     */
+    public function getAttachments(ImportJob $job): Collection;
 
     /**
      * Return configuration of job.
@@ -100,29 +98,6 @@ interface ImportJobRepositoryInterface
 
     /**
      * @param ImportJob $job
-     *
-     * @return string
-     */
-    public function getStatus(ImportJob $job);
-
-    /**
-     * @param ImportJob    $job
-     * @param UploadedFile $file
-     *
-     * @return bool
-     */
-    public function processConfiguration(ImportJob $job, UploadedFile $file): bool;
-
-    /**
-     * @param ImportJob         $job
-     * @param null|UploadedFile $file
-     *
-     * @return bool
-     */
-    public function processFile(ImportJob $job, ?UploadedFile $file): bool;
-
-    /**
-     * @param ImportJob $job
      * @param array     $configuration
      *
      * @return ImportJob
@@ -131,11 +106,11 @@ interface ImportJobRepositoryInterface
 
     /**
      * @param ImportJob $job
-     * @param array     $array
+     * @param string    $stage
      *
      * @return ImportJob
      */
-    public function setExtendedStatus(ImportJob $job, array $array): ImportJob;
+    public function setStage(ImportJob $job, string $stage): ImportJob;
 
     /**
      * @param ImportJob $job
@@ -147,19 +122,19 @@ interface ImportJobRepositoryInterface
 
     /**
      * @param ImportJob $job
-     * @param int       $steps
+     * @param Tag       $tag
      *
      * @return ImportJob
      */
-    public function setStepsDone(ImportJob $job, int $steps): ImportJob;
+    public function setTag(ImportJob $job, Tag $tag): ImportJob;
 
     /**
      * @param ImportJob $job
-     * @param int       $count
+     * @param array     $transactions
      *
      * @return ImportJob
      */
-    public function setTotalSteps(ImportJob $job, int $count): ImportJob;
+    public function setTransactions(ImportJob $job, array $transactions): ImportJob;
 
     /**
      * @param User $user
@@ -167,19 +142,27 @@ interface ImportJobRepositoryInterface
     public function setUser(User $user);
 
     /**
-     * @param ImportJob $job
-     * @param string    $status
+     * Store file.
      *
-     * @return ImportJob
+     * @param ImportJob $job
+     * @param string    $name
+     * @param string    $fileName
+     *
+     * @return MessageBag
      */
-    public function updateStatus(ImportJob $job, string $status): ImportJob;
+    public function storeCLIUpload(ImportJob $job, string $name, string $fileName): MessageBag;
 
     /**
-     * Return import file content.
+     * Handle upload for job.
      *
-     * @param ImportJob $job
+     * @param ImportJob    $job
+     * @param string       $name
+     * @param UploadedFile $file
      *
-     * @return string
+     * @return MessageBag
+     * @throws FireflyException
      */
-    public function uploadFileContents(ImportJob $job): string;
+    public function storeFileUpload(ImportJob $job, string $name, UploadedFile $file): MessageBag;
+
+
 }

@@ -19,7 +19,7 @@
  */
 
 
-/** global: originalSum, accounting, what, Modernizr, currencySymbol */
+/** global: originalSum,originalForeignSum, accounting, what, Modernizr, currencySymbol, foreignCurrencySymbol */
 
 var destAccounts = {};
 var srcAccounts = {};
@@ -33,12 +33,12 @@ $(document).ready(function () {
 
     $.getJSON('json/expense-accounts').done(function (data) {
         destAccounts = data;
-        $('input[name$="destination_account_name]"]').typeahead({source: destAccounts, autoSelect: false});
+        $('input[name$="destination_name]"]').typeahead({source: destAccounts, autoSelect: false});
     });
 
     $.getJSON('json/revenue-accounts').done(function (data) {
         srcAccounts = data;
-        $('input[name$="source_account_name]"]').typeahead({source: srcAccounts, autoSelect: false});
+        $('input[name$="source_name]"]').typeahead({source: srcAccounts, autoSelect: false});
     });
 
     $.getJSON('json/categories').done(function (data) {
@@ -69,7 +69,8 @@ $(document).ready(function () {
     });
 
 
-    $('input[name$="][amount]"]').on('input', calculateSum);
+    $('input[name$="][amount]"]').on('change', calculateBothSums);
+    $('input[name$="][foreign_amount]"]').on('change', calculateBothSums);
 
     if (!Modernizr.inputtypes.date) {
         $('input[type="date"]').datepicker(
@@ -79,6 +80,12 @@ $(document).ready(function () {
         );
     }
 });
+
+function calculateBothSums() {
+    console.log("Now in calculateBothSums()");
+    calculateSum();
+    calculateForeignSum();
+}
 
 /**
  * New and cool
@@ -93,6 +100,12 @@ function removeDivRow(e) {
     }
     var row = $(e.target);
     var index = row.data('split');
+    if (typeof index === 'undefined') {
+        var parent = row.parent();
+        index = parent.data('split');
+        console.log('Parent. ' + parent.className);
+    }
+    console.log('Split index is "' + index + '"');
     $('div.split_row[data-split="' + index + '"]').remove();
 
 
@@ -113,14 +126,14 @@ function cloneDivRow() {
     source.removeClass('initial-row');
     source.find('.count').text('#' + count);
 
-    source.find('input[name$="][amount]"]').val("").on('input', calculateSum);
-    source.find('input[name$="][foreign_amount]"]').val("").on('input', calculateSum);
+    source.find('input[name$="][amount]"]').val("").on('change', calculateBothSums);
+    source.find('input[name$="][foreign_amount]"]').val("").on('change', calculateBothSums);
     if (destAccounts.length > 0) {
-        source.find('input[name$="destination_account_name]"]').typeahead({source: destAccounts, autoSelect: false});
+        source.find('input[name$="destination_name]"]').typeahead({source: destAccounts, autoSelect: false});
     }
 
     if (srcAccounts.length > 0) {
-        source.find('input[name$="source_account_name]"]').typeahead({source: srcAccounts, autoSelect: false});
+        source.find('input[name$="source_name]"]').typeahead({source: srcAccounts, autoSelect: false});
     }
     if (categories.length > 0) {
         source.find('input[name$="category_name]"]').typeahead({source: categories, autoSelect: false});
@@ -134,7 +147,7 @@ function cloneDivRow() {
     // remove original click things, add them again:
     $('.remove-current-split').unbind('click').click(removeDivRow);
 
-    calculateSum();
+    calculateBothSums();
     resetDivSplits();
 
     return false;
@@ -166,16 +179,10 @@ function resetDivSplits() {
     $.each($('.remove-current-split'), function (i, v) {
         var button = $(v);
         button.attr('data-split', i);
-        button.find('i').attr('data-split', i);
+        button.find('span').text(' #' + (i + 1));
 
     });
 
-    // loop each indicator (#) and update it:
-    $.each($('td.count'), function (i, v) {
-        var cell = $(v);
-        var index = i + 1;
-        cell.text('#' + index);
-    });
 
     // loop each possible field.
 
@@ -184,15 +191,15 @@ function resetDivSplits() {
         var input = $(v);
         input.attr('name', 'transactions[' + i + '][transaction_description]');
     });
-    // ends with ][destination_account_name]
-    $.each($('input[name$="][destination_account_name]"]'), function (i, v) {
+    // ends with ][destination_name]
+    $.each($('input[name$="][destination_name]"]'), function (i, v) {
         var input = $(v);
-        input.attr('name', 'transactions[' + i + '][destination_account_name]');
+        input.attr('name', 'transactions[' + i + '][destination_name]');
     });
-    // ends with ][source_account_name]
-    $.each($('input[name$="][source_account_name]"]'), function (i, v) {
+    // ends with ][source_name]
+    $.each($('input[name$="][source_name]"]'), function (i, v) {
         var input = $(v);
-        input.attr('name', 'transactions[' + i + '][source_account_name]');
+        input.attr('name', 'transactions[' + i + '][source_name]');
     });
     // ends with ][amount]
     $.each($('input[name$="][amount]"]'), function (i, v) {
@@ -234,6 +241,7 @@ function resetDivSplits() {
 
 function calculateSum() {
     "use strict";
+    console.log("Now in calculateSum()");
     var left = originalSum * -1;
     var sum = 0;
     var set = $('input[name$="][amount]"]');
@@ -245,14 +253,43 @@ function calculateSum() {
     sum = Math.round(sum * 100) / 100;
     left = Math.round(left * 100) / 100;
 
+    console.log("Sum is " + sum + ", left is " + left);
 
     $('.amount-warning').remove();
     if (sum !== originalSum) {
-        var holder = $('#journal_amount_holder');
-        var par = holder.find('p.form-control-static');
-        $('<span>').text(' (' + accounting.formatMoney(sum, currencySymbol) + ')').addClass('text-danger amount-warning').appendTo(par);
+        console.log("Is different from original sum " + originalSum);
+        var paragraph = $('#journal_amount_holder').find('p.form-control-static');
+
+        $('<span>').text(' (' + accounting.formatMoney(sum, currencySymbol) + ')').addClass('text-danger amount-warning').appendTo(paragraph);
+
         // also add what's left to divide (or vice versa)
-        $('<span>').text(' (' + accounting.formatMoney(left, currencySymbol) + ')').addClass('text-danger amount-warning').appendTo(par);
+        $('<span>').text(' (' + accounting.formatMoney(left, currencySymbol) + ')').addClass('text-danger amount-warning').appendTo(paragraph);
+    }
+
+}
+
+
+function calculateForeignSum() {
+    // "use strict";
+    var left = originalForeignSum * -1;
+    var sum = 0;
+    var set = $('input[name$="][foreign_amount]"]');
+    for (var i = 0; i < set.length; i++) {
+        var current = $(set[i]);
+        sum += (current.val() === "" ? 0 : parseFloat(current.val()));
+        left += (current.val() === "" ? 0 : parseFloat(current.val()));
+    }
+    sum = Math.round(sum * 100) / 100;
+    left = Math.round(left * 100) / 100;
+
+
+    $('.amount-warning-foreign').remove();
+    if (sum !== originalForeignSum) {
+        var paragraph = $('#journal_foreign_amount_holder').find('p.form-control-static');
+        $('<span>').text(' (' + accounting.formatMoney(sum, foreignCurrencySymbol) + ')').addClass('text-danger amount-warning-foreign').appendTo(paragraph);
+
+        // also add what's left to divide (or vice versa)
+        $('<span>').text(' (' + accounting.formatMoney(left, foreignCurrencySymbol) + ')').addClass('text-danger amount-warning-foreign').appendTo(paragraph);
     }
 
 }

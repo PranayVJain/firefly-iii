@@ -35,9 +35,9 @@ use Tests\TestCase;
 class TransactionCurrenciesTest extends TestCase
 {
     /**
-     * @covers \FireflyIII\Import\Mapper\TransactionCurrencies::getMap()
+     * @covers \FireflyIII\Import\Mapper\TransactionCurrencies
      */
-    public function testGetMapBasic()
+    public function testGetMapBasic(): void
     {
         $one        = new TransactionCurrency;
         $one->id    = 9;

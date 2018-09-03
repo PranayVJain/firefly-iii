@@ -43,11 +43,11 @@ final class AmountExactly extends AbstractTrigger implements TriggerInterface
      * (even if it will still include 99.9% of the users transactions), this method MUST return
      * false.
      *
-     * @param null $value
+     * @param mixed $value
      *
      * @return bool
      */
-    public static function willMatchEverything($value = null)
+    public static function willMatchEverything($value = null): bool
     {
         if (null !== $value) {
             return false;
@@ -75,11 +75,11 @@ final class AmountExactly extends AbstractTrigger implements TriggerInterface
         $compare = $this->triggerValue;
         $result  = bccomp($amount, $compare);
         if (0 === $result) {
-            Log::debug(sprintf('RuleTrigger AmountExactly for journal #%d: %d matches %d exactly, so return true', $journal->id, $amount, $compare));
+            Log::debug(sprintf('RuleTrigger AmountExactly for journal #%d: %f matches %f exactly, so return true', $journal->id, $amount, $compare));
 
             return true;
         }
-        Log::debug(sprintf('RuleTrigger AmountExactly for journal #%d: %d matches %d NOT exactly, so return false', $journal->id, $amount, $compare));
+        Log::debug(sprintf('RuleTrigger AmountExactly for journal #%d: %f matches %f NOT exactly, so return false', $journal->id, $amount, $compare));
 
         return false;
     }

@@ -24,6 +24,7 @@ namespace FireflyIII\TransactionRules\Triggers;
 
 use FireflyIII\Models\Account;
 use FireflyIII\Models\TransactionJournal;
+use FireflyIII\Repositories\Journal\JournalRepositoryInterface;
 use Log;
 
 /**
@@ -43,11 +44,11 @@ final class ToAccountStarts extends AbstractTrigger implements TriggerInterface
      * (even if it will still include 99.9% of the users transactions), this method MUST return
      * false.
      *
-     * @param null $value
+     * @param mixed $value
      *
      * @return bool
      */
-    public static function willMatchEverything($value = null)
+    public static function willMatchEverything($value = null): bool
     {
         if (null !== $value) {
             $res = '' === (string)$value;
@@ -73,13 +74,16 @@ final class ToAccountStarts extends AbstractTrigger implements TriggerInterface
     {
         $toAccountName = '';
 
+        /** @var JournalRepositoryInterface $repository */
+        $repository = app(JournalRepositoryInterface::class);
+
         /** @var Account $account */
-        foreach ($journal->destinationAccountList() as $account) {
+        foreach ($repository->getJournalDestinationAccounts($journal) as $account) {
             $toAccountName .= strtolower($account->name);
         }
 
         $search = strtolower($this->triggerValue);
-        $part   = substr($toAccountName, 0, strlen($search));
+        $part   = substr($toAccountName, 0, \strlen($search));
 
         if ($part === $search) {
             Log::debug(sprintf('RuleTrigger ToAccountStarts for journal #%d: "%s" starts with "%s", return true.', $journal->id, $toAccountName, $search));

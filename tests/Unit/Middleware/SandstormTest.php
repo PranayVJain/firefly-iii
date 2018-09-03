@@ -24,8 +24,8 @@ declare(strict_types=1);
 namespace Tests\Unit\Middleware;
 
 use FireflyIII\Http\Middleware\Sandstorm;
-use FireflyIII\Models\Role;
 use FireflyIII\Repositories\User\UserRepositoryInterface;
+use Mockery;
 use Route;
 use Symfony\Component\HttpFoundation\Response;
 use Tests\TestCase;
@@ -36,138 +36,9 @@ use Tests\TestCase;
 class SandstormTest extends TestCase
 {
     /**
-     * @covers \FireflyIII\Http\Middleware\Sandstorm::handle
-     */
-    public function testMiddlewareAnonEmpty()
-    {
-        putenv('SANDSTORM=1');
-
-        $repository = $this->mock(UserRepositoryInterface::class);
-        $repository->shouldReceive('count')->once()->andReturn(0);
-
-        $response = $this->get('/_test/sandstorm');
-        $this->assertEquals(Response::HTTP_INTERNAL_SERVER_ERROR, $response->getStatusCode());
-        $response->assertSee('The first visit to a new Firefly III administration cannot be by a guest user.');
-
-        putenv('SANDSTORM=0');
-    }
-
-    /**
-     * @covers \FireflyIII\Http\Middleware\Sandstorm::handle
-     */
-    public function testMiddlewareAnonLoggedIn()
-    {
-        putenv('SANDSTORM=1');
-
-        $this->be($this->user());
-        $response = $this->get('/_test/sandstorm');
-        $this->assertEquals(Response::HTTP_OK, $response->getStatusCode());
-        $response->assertSee('sandstorm-anon: true');
-
-        putenv('SANDSTORM=0');
-    }
-
-    /**
-     * @covers \FireflyIII\Http\Middleware\Sandstorm::handle
-     */
-    public function testMiddlewareAnonUser()
-    {
-        putenv('SANDSTORM=1');
-
-        $repository = $this->mock(UserRepositoryInterface::class);
-        $repository->shouldReceive('count')->twice()->andReturn(1);
-
-        $response = $this->get('/_test/sandstorm');
-        $this->assertEquals(Response::HTTP_OK, $response->getStatusCode());
-        $response->assertSee('sandstorm-anon: true');
-
-        putenv('SANDSTORM=0');
-    }
-
-    /**
-     * @covers \FireflyIII\Http\Middleware\Sandstorm::handle
-     */
-    public function testMiddlewareLoggedIn()
-    {
-        putenv('SANDSTORM=1');
-
-        $this->be($this->user());
-        $response = $this->get('/_test/sandstorm', ['X-Sandstorm-User-Id' => 'abcd']);
-        $this->assertEquals(Response::HTTP_OK, $response->getStatusCode());
-        $response->assertSee('sandstorm-anon: false');
-
-        putenv('SANDSTORM=0');
-    }
-
-    /**
-     * @covers \FireflyIII\Http\Middleware\Sandstorm::handle
-     */
-    public function testMiddlewareMultiUser()
-    {
-        putenv('SANDSTORM=1');
-
-        $repository = $this->mock(UserRepositoryInterface::class);
-        $repository->shouldReceive('count')->once()->andReturn(2);
-
-        $response = $this->get('/_test/sandstorm');
-        $this->assertEquals(Response::HTTP_INTERNAL_SERVER_ERROR, $response->getStatusCode());
-        $response->assertSee('Your Firefly III installation has more than one user, which is weird.');
-
-        putenv('SANDSTORM=0');
-    }
-
-    /**
-     * @covers \FireflyIII\Http\Middleware\Sandstorm::handle
-     */
-    public function testMiddlewareNoUser()
-    {
-        putenv('SANDSTORM=1');
-
-        $repository = $this->mock(UserRepositoryInterface::class);
-        $repository->shouldReceive('count')->twice()->andReturn(0);
-        $repository->shouldReceive('store')->once()->andReturn($this->user());
-        $repository->shouldReceive('attachRole')->twice()->andReturn(true);
-        $repository->shouldReceive('getRole')->once()->andReturn(new Role);
-
-        $response = $this->get('/_test/sandstorm', ['X-Sandstorm-User-Id' => 'abcd']);
-        $this->assertEquals(Response::HTTP_OK, $response->getStatusCode());
-        $response->assertSee('sandstorm-anon: false');
-
-        putenv('SANDSTORM=0');
-    }
-
-    /**
-     * @covers \FireflyIII\Http\Middleware\Sandstorm::handle
-     */
-    public function testMiddlewareNotSandstorm()
-    {
-        $this->withoutExceptionHandling();
-        $response = $this->get('/_test/sandstorm');
-        $this->assertEquals(Response::HTTP_OK, $response->getStatusCode());
-    }
-
-    /**
-     * @covers \FireflyIII\Http\Middleware\Sandstorm::handle
-     */
-    public function testMiddlewareOneUser()
-    {
-        putenv('SANDSTORM=1');
-
-        $repository = $this->mock(UserRepositoryInterface::class);
-        $repository->shouldReceive('count')->twice()->andReturn(1);
-        $repository->shouldReceive('first')->once()->andReturn($this->user());
-
-        $response = $this->get('/_test/sandstorm', ['X-Sandstorm-User-Id' => 'abcd']);
-        $this->assertEquals(Response::HTTP_OK, $response->getStatusCode());
-        $response->assertSee('sandstorm-anon: false');
-
-        putenv('SANDSTORM=0');
-    }
-
-    /**
      * Set up test
      */
-    protected function setUp()
+    public function setUp(): void
     {
         parent::setUp();
 
@@ -176,5 +47,27 @@ class SandstormTest extends TestCase
             return view('test.test');
         }
         );
+    }
+
+    /**
+     * @covers \FireflyIII\Http\Middleware\Sandstorm
+     */
+    public function testMiddlewareBasic(): void
+    {
+        putenv('SANDSTORM=1');
+
+        $repository = $this->mock(UserRepositoryInterface::class);
+        $repository->shouldReceive('findByEmail')->withArgs(['anonymous@firefly'])->once()->andReturn($this->user());
+        // single user, checks if user is admin
+        $repository->shouldReceive('count')->andReturn(1);
+        $repository->shouldReceive('hasRole')->withArgs([Mockery::any(), 'demo'])->andReturn(false)->once();
+        $repository->shouldReceive('hasRole')->withArgs([Mockery::any(), 'owner'])->andReturn(true)->once();
+        $repository->shouldReceive('attachRole')->withArgs([Mockery::any(), 'owner'])->once();
+
+        $response = $this->get('/_test/sandstorm');
+        $this->assertEquals(Response::HTTP_OK, $response->getStatusCode());
+        $response->assertSee('sandstorm-anon: false');
+
+        putenv('SANDSTORM=0');
     }
 }

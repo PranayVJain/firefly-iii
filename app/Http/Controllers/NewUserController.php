@@ -22,12 +22,10 @@ declare(strict_types=1);
 
 namespace FireflyIII\Http\Controllers;
 
-use Carbon\Carbon;
 use FireflyIII\Http\Requests\NewUserFormRequest;
 use FireflyIII\Repositories\Account\AccountRepositoryInterface;
 use FireflyIII\Repositories\Currency\CurrencyRepositoryInterface;
-use Preferences;
-use Session;
+use FireflyIII\Support\Http\Controllers\CreateStuff;
 use View;
 
 /**
@@ -35,6 +33,10 @@ use View;
  */
 class NewUserController extends Controller
 {
+    use CreateStuff;
+    /** @var AccountRepositoryInterface The account repository */
+    private $repository;
+
     /**
      * NewUserController constructor.
      */
@@ -44,123 +46,78 @@ class NewUserController extends Controller
 
         $this->middleware(
             function ($request, $next) {
+                $this->repository = app(AccountRepositoryInterface::class);
+
                 return $next($request);
             }
         );
     }
 
     /**
-     * @param AccountRepositoryInterface $repository
+     * Form the user gets when he has no data in the system.
      *
      * @return \Illuminate\Http\RedirectResponse|\Illuminate\Routing\Redirector|View
      */
-    public function index(AccountRepositoryInterface $repository)
+    public function index()
     {
-        app('view')->share('title', trans('firefly.welcome'));
+        app('view')->share('title', (string)trans('firefly.welcome'));
         app('view')->share('mainTitleIcon', 'fa-fire');
 
         $types = config('firefly.accountTypesByIdentifier.asset');
-        $count = $repository->count($types);
+        $count = $this->repository->count($types);
+
+        $languages = [];
 
         if ($count > 0) {
             return redirect(route('index'));
         }
 
-        return view('new-user.index');
+        return view('new-user.index', compact('languages'));
     }
 
     /**
+     * Store his new settings.
+     *
      * @param NewUserFormRequest          $request
-     * @param AccountRepositoryInterface  $repository
      * @param CurrencyRepositoryInterface $currencyRepository
      *
      * @return \Illuminate\Http\RedirectResponse|\Illuminate\Routing\Redirector
      */
-    public function submit(NewUserFormRequest $request, AccountRepositoryInterface $repository, CurrencyRepositoryInterface $currencyRepository)
+    public function submit(NewUserFormRequest $request, CurrencyRepositoryInterface $currencyRepository)
     {
-        // create normal asset account:
-        $this->createAssetAccount($request, $repository);
+        $language = $request->string('language');
+        if (!array_key_exists($language, config('firefly.languages'))) {
+            $language = 'en_US';
 
-        // create savings account
-        $this->createSavingsAccount($request, $repository);
-
-        // also store currency preference from input:
-        $currency = $currencyRepository->findNull((int)$request->input('amount_currency_id_bank_balance'));
-
-        if (null !== $currency) {
-            // store currency preference:
-            Preferences::set('currencyPreference', $currency->code);
-            Preferences::mark();
         }
 
-        // set default optional fields:
-        $visibleFields = [
-            'interest_date'      => true,
-            'book_date'          => false,
-            'process_date'       => false,
-            'due_date'           => false,
-            'payment_date'       => false,
-            'invoice_date'       => false,
-            'internal_reference' => false,
-            'notes'              => true,
-            'attachments'        => true,
-        ];
-        Preferences::set('transaction_journal_optional_fields', $visibleFields);
+        // set language preference:
+        app('preferences')->set('language', $language);
+        // Store currency preference from input:
+        $currency = $currencyRepository->findNull((int)$request->input('amount_currency_id_bank_balance'));
 
-        Session::flash('success', (string)trans('firefly.stored_new_accounts_new_user'));
-        Preferences::mark();
+        // if is null, set to EUR:
+        if (null === $currency) {
+            $currency = $currencyRepository->findByCodeNull('EUR');
+        }
+
+        $this->createAssetAccount($request, $currency); // create normal asset account
+        $this->createSavingsAccount($request, $currency, $language); // create savings account
+        $this->createCashWalletAccount($currency, $language); // create cash wallet account
+
+        // store currency preference:
+        app('preferences')->set('currencyPreference', $currency->code);
+        app('preferences')->mark();
+
+        // set default optional fields:
+        $visibleFields = ['interest_date' => true, 'book_date' => false, 'process_date' => false, 'due_date' => false, 'payment_date' => false,
+                          'invoice_date'  => false, 'internal_reference' => false, 'notes' => true, 'attachments' => true,];
+        app('preferences')->set('transaction_journal_optional_fields', $visibleFields);
+
+        session()->flash('success', (string)trans('firefly.stored_new_accounts_new_user'));
+        app('preferences')->mark();
 
         return redirect(route('index'));
     }
 
-    /**
-     * @param NewUserFormRequest         $request
-     * @param AccountRepositoryInterface $repository
-     *
-     * @return bool
-     */
-    private function createAssetAccount(NewUserFormRequest $request, AccountRepositoryInterface $repository): bool
-    {
-        $assetAccount = [
-            'name'               => $request->get('bank_name'),
-            'iban'               => null,
-            'accountType'        => 'asset',
-            'virtualBalance'     => 0,
-            'account_type_id'    => null,
-            'active'             => true,
-            'accountRole'        => 'defaultAsset',
-            'openingBalance'     => $request->input('bank_balance'),
-            'openingBalanceDate' => new Carbon,
-            'currency_id'        => (int)$request->input('amount_currency_id_bank_balance'),
-        ];
-
-        $repository->store($assetAccount);
-
-        return true;
-    }
-
-    /**
-     * @param NewUserFormRequest         $request
-     * @param AccountRepositoryInterface $repository
-     *
-     * @return bool
-     */
-    private function createSavingsAccount(NewUserFormRequest $request, AccountRepositoryInterface $repository): bool
-    {
-        $savingsAccount = [
-            'name'               => $request->get('bank_name') . ' savings account',
-            'iban'               => null,
-            'accountType'        => 'asset',
-            'account_type_id'    => null,
-            'virtualBalance'     => 0,
-            'active'             => true,
-            'accountRole'        => 'savingAsset',
-            'openingBalance'     => $request->input('savings_balance'),
-            'openingBalanceDate' => new Carbon,
-            'currency_id'        => (int)$request->input('amount_currency_id_bank_balance'),
-        ];
-        $repository->store($savingsAccount);
-
-        return true;
-    }
 }

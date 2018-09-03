@@ -23,19 +23,34 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Middleware;
 
+use Log;
 use Route;
 use Symfony\Component\HttpFoundation\Response;
 use Tests\TestCase;
-use Log;
+
 /**
  * Class AuthenticateTest
  */
 class AuthenticateTest extends TestCase
 {
     /**
+     * Set up test
+     */
+    public function setUp(): void
+    {
+        parent::setUp();
+
+        Route::middleware('auth')->any(
+            '/_test/authenticate', function () {
+            return 'OK';
+        }
+        );
+    }
+
+    /**
      * @covers \FireflyIII\Http\Middleware\Authenticate
      */
-    public function testMiddleware()
+    public function testMiddleware(): void
     {
         Log::debug('Now at testMiddleware');
         $response = $this->get('/_test/authenticate');
@@ -46,7 +61,7 @@ class AuthenticateTest extends TestCase
     /**
      * @covers \FireflyIII\Http\Middleware\Authenticate
      */
-    public function testMiddlewareAjax()
+    public function testMiddlewareAjax(): void
     {
         Log::debug('Now at testMiddlewareAjax');
         $server   = ['HTTP_X-Requested-With' => 'XMLHttpRequest'];
@@ -57,7 +72,7 @@ class AuthenticateTest extends TestCase
     /**
      * @covers \FireflyIII\Http\Middleware\Authenticate
      */
-    public function testMiddlewareAuth()
+    public function testMiddlewareAuth(): void
     {
         Log::debug('Now at testMiddlewareAuth');
         $this->be($this->user());
@@ -68,7 +83,7 @@ class AuthenticateTest extends TestCase
     /**
      * @covers \FireflyIII\Http\Middleware\Authenticate
      */
-    public function testMiddlewareBlockedUser()
+    public function testMiddlewareBlockedUser(): void
     {
         Log::debug('Now at testMiddlewareBlockedUser');
         $user          = $this->user();
@@ -85,7 +100,7 @@ class AuthenticateTest extends TestCase
     /**
      * @covers \FireflyIII\Http\Middleware\Authenticate
      */
-    public function testMiddlewareEmail()
+    public function testMiddlewareEmail(): void
     {
         Log::debug('Now at testMiddlewareEmail');
         $user               = $this->user();
@@ -96,19 +111,5 @@ class AuthenticateTest extends TestCase
         $this->assertEquals(Response::HTTP_FOUND, $response->getStatusCode());
         $response->assertSessionHas('logoutMessage', (string)trans('firefly.email_changed_logout'));
         $response->assertRedirect(route('login'));
-    }
-
-    /**
-     * Set up test
-     */
-    protected function setUp()
-    {
-        parent::setUp();
-
-        Route::middleware('auth')->any(
-            '/_test/authenticate', function () {
-            return 'OK';
-        }
-        );
     }
 }

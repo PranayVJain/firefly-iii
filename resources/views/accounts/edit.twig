@@ -8,6 +8,7 @@
     {{ Form.model(account, {'class' : 'form-horizontal','id' : 'update','url' : route('accounts.update',account.id) } ) }}
 
     <input type="hidden" name="id" value="{{ account.id }}"/>
+    <input type="hidden" name="what" value="{{ what }}"/>
 
     <div class="row">
         <div class="col-lg-6 col-md-6 col-sm-12 col-xs-12">
@@ -17,9 +18,16 @@
                 </div>
                 <div class="box-body">
                     {{ ExpandedForm.text('name') }}
-                    {% if account.accounttype.type == 'Default account' or account.accounttype.type == 'Asset account' %}
-                        {# Not really mandatory but OK #}
-                        {{ ExpandedForm.select('currency_id', currencySelectList) }}
+                    {% if account.accountType.type == 'Default account' or account.accountType.type == 'Asset account' or what == 'liabilities' %}
+                        {{ ExpandedForm.currencyList('currency_id', null, {helpText:'account_default_currency'|_}) }}
+                    {% endif %}
+
+                    {% if what == 'liabilities' %}
+                        {{ ExpandedForm.select('liability_type_id', liabilityTypes) }}
+                        {{ ExpandedForm.amountNoCurrency('openingBalance', null, {label:'debt_start_amount'|_, helpText: 'debt_start_amount_help'|_}) }}
+                        {{ ExpandedForm.date('openingBalanceDate', null, {label:'debt_start_date'|_}) }}
+                        {{ ExpandedForm.percentage('interest') }}
+                        {{ ExpandedForm.select('interest_period', interestPeriods) }}
                     {% endif %}
                 </div>
             </div>
@@ -42,14 +50,20 @@
                     {% if account.accounttype.type == 'Default account' or account.accounttype.type == 'Asset account' %}
 
                         {# get opening balance entry for this thing! #}
-                        {{ ExpandedForm.nonSelectableBalance('openingBalance',null, {'currency' : currency }) }}
+                        {{ ExpandedForm.amountNoCurrency('openingBalance',null) }}
                         {{ ExpandedForm.date('openingBalanceDate') }}
                         {{ ExpandedForm.select('accountRole', roles) }}
-                        {{ ExpandedForm.nonSelectableBalance('virtualBalance',null, {'currency' : currency }) }}
+                        {{ ExpandedForm.amountNoCurrency('virtualBalance',null) }}
 
                     {% endif %}
-                    {{ ExpandedForm.textarea('notes',null,{helpText: trans('firefly.field_supports_markdown')}) }}
-                    {{ ExpandedForm.checkbox('active','1', preFilled.active) }}
+
+
+                    {{ ExpandedForm.textarea('notes',preFilled.notes,{helpText: trans('firefly.field_supports_markdown')}) }}
+
+                    {# only correct way to do active checkbox #}
+                    {{ ExpandedForm.checkbox('active', 1) }}
+                    {# only correct way to do active checkbox #}
+                    {{ ExpandedForm.checkbox('include_net_worth', 1) }}
                 </div>
             </div>
 
@@ -87,15 +101,6 @@
 {% block scripts %}
     <script type="text/javascript" src="js/lib/modernizr-custom.js?v={{ FF_VERSION }}"></script>
     <script type="text/javascript" src="js/lib/jquery-ui.min.js?v={{ FF_VERSION }}"></script>
-
-    {# JS currency list for update thing #}
-    <script type="text/javascript">
-        var currencies = [];
-        {% for currency in allCurrencies %}
-        currencies[{{ currency.id }}] = "{{ currency.symbol }}";
-        {% endfor %}
-    </script>
-
     <script type="text/javascript" src="js/ff/accounts/edit.js?v={{ FF_VERSION }}"></script>
 {% endblock %}
 

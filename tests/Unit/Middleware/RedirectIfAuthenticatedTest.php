@@ -34,29 +34,9 @@ use Tests\TestCase;
 class RedirectIfAuthenticatedTest extends TestCase
 {
     /**
-     * @covers \FireflyIII\Http\Middleware\RedirectIfAuthenticated::handle
-     */
-    public function testMiddleware()
-    {
-        $response = $this->get('/_test/authenticate');
-        $this->assertEquals(Response::HTTP_OK, $response->getStatusCode());
-    }
-
-    /**
-     * @covers \FireflyIII\Http\Middleware\RedirectIfAuthenticated::handle
-     */
-    public function testMiddlewareAuthenticated()
-    {
-        $this->be($this->user());
-        $response = $this->get('/_test/authenticate');
-        $this->assertEquals(Response::HTTP_FOUND, $response->getStatusCode());
-        $response->assertRedirect(route('index'));
-    }
-
-    /**
      * Set up test
      */
-    protected function setUp()
+    public function setUp(): void
     {
         parent::setUp();
 
@@ -65,5 +45,25 @@ class RedirectIfAuthenticatedTest extends TestCase
             return 'OK';
         }
         );
+    }
+
+    /**
+     * @covers \FireflyIII\Http\Middleware\RedirectIfAuthenticated
+     */
+    public function testMiddleware(): void
+    {
+        $response = $this->get('/_test/authenticate');
+        $this->assertEquals(Response::HTTP_OK, $response->getStatusCode());
+    }
+
+    /**
+     * @covers \FireflyIII\Http\Middleware\RedirectIfAuthenticated
+     */
+    public function testMiddlewareAuthenticated(): void
+    {
+        $this->be($this->user());
+        $response = $this->get('/_test/authenticate');
+        $this->assertEquals(Response::HTTP_FOUND, $response->getStatusCode());
+        $response->assertRedirect(route('index'));
     }
 }

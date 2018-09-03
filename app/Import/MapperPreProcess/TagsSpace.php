@@ -28,6 +28,8 @@ namespace FireflyIII\Import\MapperPreProcess;
 class TagsSpace implements PreProcessorInterface
 {
     /**
+     * Explode and filter list of space separated tags.
+     *
      * @param string $value
      *
      * @return array
@@ -36,7 +38,7 @@ class TagsSpace implements PreProcessorInterface
     {
         $set = explode(' ', $value);
         $set = array_map('trim', $set);
-        $set = array_filter($set, 'strlen');
+        $set = array_filter($set, '\strlen');
 
         return array_values($set);
     }

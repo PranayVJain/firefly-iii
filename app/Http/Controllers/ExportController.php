@@ -23,18 +23,15 @@ declare(strict_types=1);
 namespace FireflyIII\Http\Controllers;
 
 use Carbon\Carbon;
-use ExpandedForm;
 use FireflyIII\Exceptions\FireflyException;
 use FireflyIII\Export\ProcessorInterface;
 use FireflyIII\Http\Middleware\IsDemoUser;
 use FireflyIII\Http\Requests\ExportFormRequest;
-use FireflyIII\Models\AccountType;
 use FireflyIII\Models\ExportJob;
 use FireflyIII\Repositories\Account\AccountRepositoryInterface;
 use FireflyIII\Repositories\ExportJob\ExportJobRepositoryInterface;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Response as LaravelResponse;
-use Preferences;
-use View;
 
 /**
  * Class ExportController.
@@ -42,7 +39,7 @@ use View;
 class ExportController extends Controller
 {
     /**
-     *
+     * ExportController constructor.
      */
     public function __construct()
     {
@@ -51,7 +48,7 @@ class ExportController extends Controller
         $this->middleware(
             function ($request, $next) {
                 app('view')->share('mainTitleIcon', 'fa-file-archive-o');
-                app('view')->share('title', trans('firefly.export_and_backup_data'));
+                app('view')->share('title', (string)trans('firefly.export_and_backup_data'));
 
                 return $next($request);
             }
@@ -60,6 +57,8 @@ class ExportController extends Controller
     }
 
     /**
+     * Download exported file.
+     *
      * @param ExportJobRepositoryInterface $repository
      * @param ExportJob                    $job
      *
@@ -79,7 +78,7 @@ class ExportController extends Controller
         }
         $content = $repository->getContent($job);
 
-        $job->change('export_downloaded');
+        $repository->changeStatus($job, 'export_downloaded');
         /** @var LaravelResponse $response */
         $response = response($content, 200);
         $response
@@ -91,28 +90,31 @@ class ExportController extends Controller
             ->header('Expires', '0')
             ->header('Cache-Control', 'must-revalidate, post-check=0, pre-check=0')
             ->header('Pragma', 'public')
-            ->header('Content-Length', strlen($content));
+            ->header('Content-Length', \strlen($content));
 
         return $response;
     }
 
     /**
+     * Get current export status.
+     *
      * @param ExportJob $job
      *
      * @return \Illuminate\Http\JsonResponse
      */
-    public function getStatus(ExportJob $job)
+    public function getStatus(ExportJob $job): JsonResponse
     {
-        return response()->json(['status' => trans('firefly.' . $job->status)]);
+        return response()->json(['status' => (string)trans('firefly.' . $job->status)]);
     }
 
     /**
-     * @param AccountRepositoryInterface   $repository
+     * Index of export routine.
+     *
      * @param ExportJobRepositoryInterface $jobs
      *
-     * @return View
+     * @return \Illuminate\Contracts\View\Factory|\Illuminate\View\View
      */
-    public function index(AccountRepositoryInterface $repository, ExportJobRepositoryInterface $jobs)
+    public function index(ExportJobRepositoryInterface $jobs)
     {
         // create new export job.
         $job = $jobs->create();
@@ -120,25 +122,26 @@ class ExportController extends Controller
         $jobs->cleanup();
 
         // does the user have shared accounts?
-        $accounts      = $repository->getAccountsByType([AccountType::DEFAULT, AccountType::ASSET]);
-        $accountList   = ExpandedForm::makeSelectList($accounts);
-        $checked       = array_keys($accountList);
         $formats       = array_keys(config('firefly.export_formats'));
-        $defaultFormat = Preferences::get('export_format', config('firefly.default_export_format'))->data;
+        $defaultFormat = app('preferences')->get('export_format', config('firefly.default_export_format'))->data;
         $first         = session('first')->format('Y-m-d');
-        $today         = Carbon::create()->format('Y-m-d');
+        $today         = Carbon::now()->format('Y-m-d');
 
-        return view('export.index', compact('job', 'checked', 'accountList', 'formats', 'defaultFormat', 'first', 'today'));
+        return view('export.index', compact('job', 'formats', 'defaultFormat', 'first', 'today'));
     }
 
     /**
+     * Submit the job.
+     *
      * @param ExportFormRequest            $request
      * @param AccountRepositoryInterface   $repository
      * @param ExportJobRepositoryInterface $jobs
      *
-     * @return \Illuminate\Http\JsonResponse
+     * @return JsonResponse
+     *
+     * @SuppressWarnings(PHPMD.ExcessiveMethodLength)
      */
-    public function postIndex(ExportFormRequest $request, AccountRepositoryInterface $repository, ExportJobRepositoryInterface $jobs)
+    public function postIndex(ExportFormRequest $request, AccountRepositoryInterface $repository, ExportJobRepositoryInterface $jobs): JsonResponse
     {
         $job      = $jobs->findByKey($request->get('job'));
         $accounts = $request->get('accounts') ?? [];

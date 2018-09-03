@@ -32,9 +32,9 @@ use Tests\TestCase;
 class TransactionTypeTest extends TestCase
 {
     /**
-     * @covers \FireflyIII\TransactionRules\Triggers\TransactionType::triggered
+     * @covers \FireflyIII\TransactionRules\Triggers\TransactionType
      */
-    public function testTriggered()
+    public function testTriggered(): void
     {
         $journal = TransactionJournal::inRandomOrder()->whereNull('deleted_at')->first();
         $type    = $journal->transactionType->type;
@@ -44,9 +44,9 @@ class TransactionTypeTest extends TestCase
     }
 
     /**
-     * @covers \FireflyIII\TransactionRules\Triggers\TransactionType::triggered
+     * @covers \FireflyIII\TransactionRules\Triggers\TransactionType
      */
-    public function testTriggeredFalse()
+    public function testTriggeredFalse(): void
     {
         $journal = TransactionJournal::inRandomOrder()->whereNull('deleted_at')->first();
         $trigger = TransactionType::makeFromStrings('NonExisting', false);
@@ -55,9 +55,9 @@ class TransactionTypeTest extends TestCase
     }
 
     /**
-     * @covers \FireflyIII\TransactionRules\Triggers\TransactionType::willMatchEverything
+     * @covers \FireflyIII\TransactionRules\Triggers\TransactionType
      */
-    public function testWillMatchEverythingNotNull()
+    public function testWillMatchEverythingNotNull(): void
     {
         $value  = 'x';
         $result = TransactionType::willMatchEverything($value);
@@ -65,9 +65,9 @@ class TransactionTypeTest extends TestCase
     }
 
     /**
-     * @covers \FireflyIII\TransactionRules\Triggers\TransactionType::willMatchEverything
+     * @covers \FireflyIII\TransactionRules\Triggers\TransactionType
      */
-    public function testWillMatchEverythingNull()
+    public function testWillMatchEverythingNull(): void
     {
         $value  = null;
         $result = TransactionType::willMatchEverything($value);

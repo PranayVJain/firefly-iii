@@ -1,5 +1,5 @@
 <?php
-declare(strict_types=1);
+
 /**
  * BillRequest.php
  * Copyright (c) 2018 thegrumpydictator@gmail.com
@@ -20,6 +20,7 @@ declare(strict_types=1);
  * along with Firefly III. If not, see <http://www.gnu.org/licenses/>.
  */
 
+declare(strict_types=1);
 
 namespace FireflyIII\Api\V1\Requests;
 
@@ -32,6 +33,8 @@ class BillRequest extends Request
 {
 
     /**
+     * Authorize logged in users.
+     *
      * @return bool
      */
     public function authorize(): bool
@@ -41,55 +44,56 @@ class BillRequest extends Request
     }
 
     /**
+     * Get all data from the request.
+     *
      * @return array
      */
     public function getAll(): array
     {
         $data = [
-            'name'        => $this->string('name'),
-            'match'       => $this->string('match'),
-            'amount_min'  => $this->string('amount_min'),
-            'amount_max'  => $this->string('amount_max'),
-            //'currency_id'   => $this->integer('currency_id'),
-            //'currency_code' => $this->string('currency_code'),
-            'date'        => $this->date('date'),
-            'repeat_freq' => $this->string('repeat_freq'),
-            'skip'        => $this->integer('skip'),
-            'automatch'   => $this->boolean('automatch'),
-            'active'      => $this->boolean('active'),
-            'notes'       => $this->string('notes'),
+            'name'          => $this->string('name'),
+            'amount_min'    => $this->string('amount_min'),
+            'amount_max'    => $this->string('amount_max'),
+            'currency_id'   => $this->integer('currency_id'),
+            'currency_code' => $this->string('currency_code'),
+            'date'          => $this->date('date'),
+            'repeat_freq'   => $this->string('repeat_freq'),
+            'skip'          => $this->integer('skip'),
+            'automatch'     => $this->boolean('automatch'),
+            'active'        => $this->boolean('active'),
+            'notes'         => $this->string('notes'),
         ];
 
         return $data;
     }
 
     /**
+     * The rules that the incoming request must be matched against.
+     *
      * @return array
      */
     public function rules(): array
     {
         $rules = [
-            'name'        => 'required|between:1,255|uniqueObjectForUser:bills,name',
-            'match'       => 'required|between:1,255|uniqueObjectForUser:bills,match',
-            'amount_min'  => 'required|numeric|more:0',
-            'amount_max'  => 'required|numeric|more:0',
-            //'currency_id'   => 'numeric|exists:transaction_currencies,id|required_without:currency_code',
-            //'currency_code' => 'min:3|max:3|exists:transaction_currencies,code|required_without:currency_id',
-            'date'        => 'required|date',
-            'repeat_freq' => 'required|in:weekly,monthly,quarterly,half-year,yearly',
-            'skip'        => 'required|between:0,31',
-            'automatch'   => 'required|boolean',
-            'active'      => 'required|boolean',
-            'notes'       => 'between:1,65536',
+            'name'          => 'required|between:1,255|uniqueObjectForUser:bills,name',
+            'amount_min'    => 'required|numeric|more:0',
+            'amount_max'    => 'required|numeric|more:0',
+            'currency_id'   => 'numeric|exists:transaction_currencies,id|required_without:currency_code',
+            'currency_code' => 'min:3|max:3|exists:transaction_currencies,code|required_without:currency_id',
+            'date'          => 'required|date',
+            'repeat_freq'   => 'required|in:weekly,monthly,quarterly,half-year,yearly',
+            'skip'          => 'required|between:0,31',
+            'automatch'     => 'required|boolean',
+            'active'        => 'required|boolean',
+            'notes'         => 'between:1,65536',
         ];
         switch ($this->method()) {
             default:
                 break;
             case 'PUT':
             case 'PATCH':
-                $bill           = $this->route()->parameter('bill');
-                $rules['name']  .= ',' . $bill->id;
-                $rules['match'] .= ',' . $bill->id;
+                $bill          = $this->route()->parameter('bill');
+                $rules['name'] .= ',' . $bill->id;
                 break;
         }
 
@@ -111,7 +115,7 @@ class BillRequest extends Request
                 $min  = (float)($data['amount_min'] ?? 0);
                 $max  = (float)($data['amount_max'] ?? 0);
                 if ($min > $max) {
-                    $validator->errors()->add('amount_min', trans('validation.amount_min_over_max'));
+                    $validator->errors()->add('amount_min', (string)trans('validation.amount_min_over_max'));
                 }
             }
         );

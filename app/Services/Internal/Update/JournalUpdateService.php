@@ -26,6 +26,7 @@ namespace FireflyIII\Services\Internal\Update;
 use FireflyIII\Factory\TransactionFactory;
 use FireflyIII\Models\Transaction;
 use FireflyIII\Models\TransactionJournal;
+use FireflyIII\Models\TransactionType;
 use FireflyIII\Services\Internal\Support\JournalServiceTrait;
 use Illuminate\Support\Collection;
 use Log;
@@ -44,6 +45,9 @@ class JournalUpdateService
      * @param array              $data
      *
      * @return TransactionJournal
+     * @throws \FireflyIII\Exceptions\FireflyException
+     * @SuppressWarnings(PHPMD.ExcessiveMethodLength)
+     * @SuppressWarnings(PHPMD.CyclomaticComplexity)
      */
     public function update(TransactionJournal $journal, array $data): TransactionJournal
     {
@@ -57,12 +61,12 @@ class JournalUpdateService
         $service = app(TransactionUpdateService::class);
         $service->setUser($journal->user);
 
-        // create transactions
+        // create transactions:
         /** @var TransactionFactory $factory */
         $factory = app(TransactionFactory::class);
         $factory->setUser($journal->user);
 
-        Log::debug(sprintf('Found %d rows in array (should result in %d transactions', count($data['transactions']), count($data['transactions']) * 2));
+        Log::debug(sprintf('Found %d rows in array (should result in %d transactions', \count($data['transactions']), \count($data['transactions']) * 2));
 
         /**
          * @var int   $identifier
@@ -97,13 +101,19 @@ class JournalUpdateService
                 $journal->transactions()->where('identifier', $transaction->identifier)->delete();
             }
         }
-        Log::debug(sprintf('New count is %d, transactions array held %d items', $journal->transactions()->count(), count($data['transactions'])));
+        Log::debug(sprintf('New count is %d, transactions array held %d items', $journal->transactions()->count(), \count($data['transactions'])));
 
         // connect bill:
         $this->connectBill($journal, $data);
 
         // connect tags:
         $this->connectTags($journal, $data);
+
+        // remove category from journal:
+        $journal->categories()->sync([]);
+
+        // remove budgets from journal:
+        $journal->budgets()->sync([]);
 
         // update or create custom fields:
         // store date meta fields (if present):
@@ -135,11 +145,20 @@ class JournalUpdateService
         /** @var TransactionUpdateService $service */
         $service = app(TransactionUpdateService::class);
         $service->setUser($journal->user);
-
+        if (TransactionType::WITHDRAWAL === $journal->transactionType->type) {
+            /** @var Transaction $transaction */
+            foreach ($journal->transactions as $transaction) {
+                $service->updateBudget($transaction, $budgetId);
+            }
+            return $journal;
+        }
+        // clear budget.
         /** @var Transaction $transaction */
         foreach ($journal->transactions as $transaction) {
-            $service->updateBudget($transaction, $budgetId);
+            $transaction->budgets()->sync([]);
         }
+        // remove budgets from journal:
+        $journal->budgets()->sync([]);
 
         return $journal;
     }
@@ -162,6 +181,8 @@ class JournalUpdateService
         foreach ($journal->transactions as $transaction) {
             $service->updateCategory($transaction, $category);
         }
+        // make journal empty:
+        $journal->categories()->sync([]);
 
         return $journal;
     }

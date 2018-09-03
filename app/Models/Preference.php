@@ -22,17 +22,26 @@ declare(strict_types=1);
 
 namespace FireflyIII\Models;
 
+use Carbon\Carbon;
 use Crypt;
 use Exception;
 use FireflyIII\Exceptions\FireflyException;
+use FireflyIII\User;
 use Illuminate\Contracts\Encryption\DecryptException;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Log;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 /**
  * Class Preference.
  *
- * @property mixed $data
+ * @property mixed  $data
+ * @property string $name
+ * @property Carbon $updated_at
+ * @property Carbon $created_at
+ * @property int    $id
+ * @property User   user
  */
 class Preference extends Model
 {
@@ -47,8 +56,32 @@ class Preference extends Model
             'updated_at' => 'datetime',
         ];
 
-    /** @var array */
-    protected $fillable = ['user_id', 'data', 'name', 'data'];
+    /** @var array Fields that can be filled */
+    protected $fillable = ['user_id', 'data', 'name'];
+
+    /**
+     * Route binder. Converts the key in the URL to the specified object (or throw 404).
+     *
+     * @param string $value
+     *
+     * @return Preference
+     * @throws NotFoundHttpException
+     */
+    public static function routeBinder(string $value): Preference
+    {
+        if (auth()->check()) {
+            $preferenceId = (int)$value;
+            /** @var User $user */
+            $user = auth()->user();
+            /** @var Preference $preference */
+            $preference = $user->preferences()->find($preferenceId);
+            if (null !== $preference) {
+                return $preference;
+            }
+        }
+        throw new NotFoundHttpException;
+    }
+
 
     /**
      * @param $value
@@ -56,6 +89,7 @@ class Preference extends Model
      * @return mixed
      *
      * @throws FireflyException
+     * @SuppressWarnings(PHPMD.CyclomaticComplexity)
      */
     public function getDataAttribute($value)
     {
@@ -63,7 +97,7 @@ class Preference extends Model
         try {
             $data = Crypt::decrypt($value);
         } catch (DecryptException $e) {
-            Log::error('Could not decrypt preference.', ['id' => $this->id, 'name' => $this->name, 'data' => $value]);
+            Log::error(sprintf('Could not decrypt preference: %s', $e->getMessage()), ['id' => $this->id, 'name' => $this->name, 'data' => $value]);
             throw new FireflyException(
                 sprintf('Could not decrypt preference #%d. If this error persists, please run "php artisan cache:clear" on the command line.', $this->id)
             );
@@ -71,9 +105,8 @@ class Preference extends Model
         $serialized = true;
         try {
             unserialize($data, ['allowed_classes' => false]);
-        } catch (Exception $e) {
+        } /** @noinspection BadExceptionsProcessingInspection */ catch (Exception $e) {
             $serialized = false;
-            Log::debug(sprintf('Could not unserialise preference #%d. This is good. %s', $this->id, $e->getMessage()));
         }
         if (!$serialized) {
             $result = json_decode($data, true);
@@ -92,17 +125,17 @@ class Preference extends Model
      *
      * @throws \Illuminate\Contracts\Encryption\EncryptException
      */
-    public function setDataAttribute($value)
+    public function setDataAttribute($value): void
     {
         $this->attributes['data'] = Crypt::encrypt(json_encode($value));
     }
 
     /**
      * @codeCoverageIgnore
-     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
+     * @return BelongsTo
      */
-    public function user()
+    public function user(): BelongsTo
     {
-        return $this->belongsTo('FireflyIII\User');
+        return $this->belongsTo(User::class);
     }
 }

@@ -22,11 +22,10 @@ declare(strict_types=1);
 
 namespace FireflyIII\Http\Controllers;
 
-use FireflyIII\Repositories\Budget\BudgetRepositoryInterface;
-use FireflyIII\Repositories\Category\CategoryRepositoryInterface;
-use FireflyIII\Repositories\Journal\JournalRepositoryInterface;
-use FireflyIII\Repositories\Tag\TagRepositoryInterface;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Log;
+use Throwable;
 
 /**
  * Class JsonController.
@@ -34,101 +33,59 @@ use Illuminate\Http\Request;
 class JsonController extends Controller
 {
     /**
+     * Render HTML form for rule action.
+     *
      * @param Request $request
      *
-     * @return \Illuminate\Http\JsonResponse
-     *
-
+     * @return JsonResponse
      */
-    public function action(Request $request)
+    public function action(Request $request): JsonResponse
     {
         $count   = (int)$request->get('count') > 0 ? (int)$request->get('count') : 1;
         $keys    = array_keys(config('firefly.rule-actions'));
         $actions = [];
         foreach ($keys as $key) {
-            $actions[$key] = trans('firefly.rule_action_' . $key . '_choice');
+            $actions[$key] = (string)trans('firefly.rule_action_' . $key . '_choice');
         }
-        $view = view('rules.partials.action', compact('actions', 'count'))->render();
+        try {
+            $view = view('rules.partials.action', compact('actions', 'count'))->render();
+            // @codeCoverageIgnoreStart
+        } catch (Throwable $e) {
+            Log::error(sprintf('Cannot render rules.partials.action: %s', $e->getMessage()));
+            $view = 'Could not render view.';
+        }
+        // @codeCoverageIgnoreEnd
 
         return response()->json(['html' => $view]);
     }
 
     /**
-     * @param BudgetRepositoryInterface $repository
+     * Render HTML for rule trigger.
      *
-     * @return \Illuminate\Http\JsonResponse
-     */
-    public function budgets(BudgetRepositoryInterface $repository)
-    {
-        $return = array_unique($repository->getBudgets()->pluck('name')->toArray());
-        sort($return);
-
-        return response()->json($return);
-    }
-
-    /**
-     * Returns a list of categories.
-     *
-     * @param CategoryRepositoryInterface $repository
-     *
-     * @return \Illuminate\Http\JsonResponse
-     */
-    public function categories(CategoryRepositoryInterface $repository)
-    {
-        $return = array_unique($repository->getCategories()->pluck('name')->toArray());
-        sort($return);
-
-        return response()->json($return);
-    }
-
-    /**
-     * Returns a JSON list of all beneficiaries.
-     *
-     * @param TagRepositoryInterface $tagRepository
-     *
-     * @return \Illuminate\Http\JsonResponse
-     */
-    public function tags(TagRepositoryInterface $tagRepository)
-    {
-        $return = array_unique($tagRepository->get()->pluck('tag')->toArray());
-        sort($return);
-
-        return response()->json($return);
-    }
-
-    /**
-     * @param JournalRepositoryInterface $repository
-     *
-     * @return \Illuminate\Http\JsonResponse
-     */
-    public function transactionTypes(JournalRepositoryInterface $repository)
-    {
-        $return = array_unique($repository->getTransactionTypes()->pluck('type')->toArray());
-        sort($return);
-
-        return response()->json($return);
-    }
-
-    /**
      * @param Request $request
      *
-     * @return \Illuminate\Http\JsonResponse
-     *
-
+     * @return JsonResponse
      */
-    public function trigger(Request $request)
+    public function trigger(Request $request): JsonResponse
     {
         $count    = (int)$request->get('count') > 0 ? (int)$request->get('count') : 1;
         $keys     = array_keys(config('firefly.rule-triggers'));
         $triggers = [];
         foreach ($keys as $key) {
             if ('user_action' !== $key) {
-                $triggers[$key] = trans('firefly.rule_trigger_' . $key . '_choice');
+                $triggers[$key] = (string)trans('firefly.rule_trigger_' . $key . '_choice');
             }
         }
         asort($triggers);
 
-        $view = view('rules.partials.trigger', compact('triggers', 'count'))->render();
+        try {
+            $view = view('rules.partials.trigger', compact('triggers', 'count'))->render();
+            // @codeCoverageIgnoreStart
+        } catch (Throwable $e) {
+            Log::error(sprintf('Cannot render rules.partials.trigger: %s', $e->getMessage()));
+            $view = 'Could not render view.';
+        }
+        // @codeCoverageIgnoreEnd
 
         return response()->json(['html' => $view]);
     }

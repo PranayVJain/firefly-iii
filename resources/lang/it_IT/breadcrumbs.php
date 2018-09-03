@@ -1,8 +1,8 @@
 <?php
-declare(strict_types=1);
+
 /**
  * breadcrumbs.php
- * Copyright (c) 2017 thegrumpydictator@gmail.com
+ * Copyright (c) 2018 thegrumpydictator@gmail.com
  *
  * This file is part of Firefly III.
  *
@@ -20,8 +20,10 @@ declare(strict_types=1);
  * along with Firefly III. If not, see <http://www.gnu.org/licenses/>.
  */
 
+declare(strict_types=1);
+
 return [
-    'home'                => 'Home',
+    'home'                => 'Pagina principale',
     'edit_currency'       => 'Modifica valuta ":name"',
     'delete_currency'     => 'Elimina valuta ":name"',
     'newPiggyBank'        => 'Crea un nuovo salvadanaio',
@@ -30,14 +32,14 @@ return [
     'profile'             => 'Profilo',
     'changePassword'      => 'Cambia la tua password',
     'change_email'        => 'Cambia il tuo indirizzo email',
-    'bills'               => 'Fatture',
-    'newBill'             => 'Nuova fattura',
-    'edit_bill'           => 'Modifica fattura ":name"',
-    'delete_bill'         => 'Elimina fattura ":name"',
-    'reports'             => 'Stampe',
+    'bills'               => 'Bollette',
+    'newBill'             => 'Nuova bolletta',
+    'edit_bill'           => 'Modifica bolletta ":name"',
+    'delete_bill'         => 'Elimina bolletta ":name"',
+    'reports'             => 'Resoconti',
     'search_result'       => 'Risultati di ricerca per ":query"',
     'withdrawal_list'     => 'Spese',
-    'deposit_list'        => 'Entrate, entrate e depositi',
+    'deposit_list'        => 'Redditi, entrate e depositi',
     'transfer_list'       => 'Trasferimenti',
     'transfers_list'      => 'Trasferimenti',
     'reconciliation_list' => 'Riconciliazioni',

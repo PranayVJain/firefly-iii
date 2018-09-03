@@ -24,6 +24,8 @@ namespace FireflyIII\Support\Twig;
 
 use Carbon\Carbon;
 use FireflyIII\Models\Account;
+use FireflyIII\Repositories\User\UserRepositoryInterface;
+use FireflyIII\Support\Twig\Extension\Account as AccountExtension;
 use League\CommonMark\CommonMarkConverter;
 use Route;
 use Twig_Extension;
@@ -58,12 +60,12 @@ class General extends Twig_Extension
             $this->getCurrencySymbol(),
             $this->phpdate(),
             $this->env(),
-            //$this->getAmountFromJournal(),
             $this->activeRouteStrict(),
-            //$this->steamPositive(),
             $this->activeRoutePartial(),
             $this->activeRoutePartialWhat(),
             $this->formatDate(),
+            new Twig_SimpleFunction('accountGetMetaField', [AccountExtension::class, 'getMetaField']),
+            $this->hasRole(),
         ];
     }
 
@@ -78,7 +80,7 @@ class General extends Twig_Extension
         return new Twig_SimpleFunction(
             'activeRoutePartial',
             function (): string {
-                $args  = func_get_args();
+                $args  = \func_get_args();
                 $route = $args[0]; // name of the route.
                 $name  = Route::getCurrentRoute()->getName() ?? '';
                 if (!(false === strpos($name, $route))) {
@@ -101,12 +103,10 @@ class General extends Twig_Extension
         return new Twig_SimpleFunction(
             'activeRoutePartialWhat',
             function ($context): string {
-                $args       = func_get_args();
-                $route      = $args[1]; // name of the route.
-                $what       = $args[2]; // name of the route.
+                [, $route, $what] = \func_get_args();
                 $activeWhat = $context['what'] ?? false;
 
-                if ($what === $activeWhat && !(false === strpos(Route::getCurrentRoute()->getName(), $route))) {
+                if ($what === $activeWhat && !(false === stripos(Route::getCurrentRoute()->getName(), $route))) {
                     return 'active';
                 }
 
@@ -127,7 +127,7 @@ class General extends Twig_Extension
         return new Twig_SimpleFunction(
             'activeRouteStrict',
             function (): string {
-                $args  = func_get_args();
+                $args  = \func_get_args();
                 $route = $args[0]; // name of the route.
 
                 if (Route::getCurrentRoute()->getName() === $route) {
@@ -150,6 +150,7 @@ class General extends Twig_Extension
                 if (null === $account) {
                     return 'NULL';
                 }
+                /** @var Carbon $date */
                 $date = session('end', Carbon::now()->endOfMonth());
 
                 return app('steam')->balance($account, $date);
@@ -173,7 +174,7 @@ class General extends Twig_Extension
     /**
      * @return Twig_SimpleFunction
      */
-    protected function formatDate()
+    protected function formatDate(): Twig_SimpleFunction
     {
         return new Twig_SimpleFunction(
             'formatDate',
@@ -230,6 +231,26 @@ class General extends Twig_Extension
             'getCurrencySymbol',
             function (): string {
                 return app('amount')->getCurrencySymbol();
+            }
+        );
+    }
+
+    /**
+     * Will return true if the user is of role X.
+     *
+     * @return Twig_SimpleFunction
+     */
+    protected function hasRole(): Twig_SimpleFunction
+    {
+        return new Twig_SimpleFunction(
+            'hasRole',
+            function (string $role): bool {
+                $repository = app(UserRepositoryInterface::class);
+                if ($repository->hasRole(auth()->user(), $role)) {
+                    return true;
+                }
+
+                return false;
             }
         );
     }
@@ -329,7 +350,7 @@ class General extends Twig_Extension
     /**
      * @return Twig_SimpleFunction
      */
-    protected function phpdate()
+    protected function phpdate(): Twig_SimpleFunction
     {
         return new Twig_SimpleFunction(
             'phpdate',

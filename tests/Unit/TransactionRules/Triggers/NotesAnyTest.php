@@ -33,9 +33,9 @@ use Tests\TestCase;
 class NotesAnyTest extends TestCase
 {
     /**
-     * @covers \FireflyIII\TransactionRules\Triggers\NotesAny::triggered
+     * @covers \FireflyIII\TransactionRules\Triggers\NotesAny
      */
-    public function testTriggered()
+    public function testTriggered(): void
     {
         $journal = TransactionJournal::inRandomOrder()->whereNull('deleted_at')->first();
         $journal->notes()->delete();
@@ -49,9 +49,9 @@ class NotesAnyTest extends TestCase
     }
 
     /**
-     * @covers \FireflyIII\TransactionRules\Triggers\NotesAny::triggered
+     * @covers \FireflyIII\TransactionRules\Triggers\NotesAny
      */
-    public function testTriggeredEmpty()
+    public function testTriggeredEmpty(): void
     {
         $journal = TransactionJournal::inRandomOrder()->whereNull('deleted_at')->first();
         $journal->notes()->delete();
@@ -65,9 +65,9 @@ class NotesAnyTest extends TestCase
     }
 
     /**
-     * @covers \FireflyIII\TransactionRules\Triggers\NotesAny::triggered
+     * @covers \FireflyIII\TransactionRules\Triggers\NotesAny
      */
-    public function testTriggeredNone()
+    public function testTriggeredNone(): void
     {
         $journal = TransactionJournal::inRandomOrder()->whereNull('deleted_at')->first();
         $journal->notes()->delete();
@@ -77,9 +77,9 @@ class NotesAnyTest extends TestCase
     }
 
     /**
-     * @covers \FireflyIII\TransactionRules\Triggers\NotesAny::willMatchEverything
+     * @covers \FireflyIII\TransactionRules\Triggers\NotesAny
      */
-    public function testWillMatchEverythingNull()
+    public function testWillMatchEverythingNull(): void
     {
         $value  = null;
         $result = NotesAny::willMatchEverything($value);

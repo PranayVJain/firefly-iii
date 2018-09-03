@@ -32,9 +32,6 @@ use Log;
  */
 class ClearNotes implements ActionInterface
 {
-    /** @var RuleAction The rule action */
-    private $action;
-
     /**
      * TriggerInterface constructor.
      *
@@ -42,7 +39,6 @@ class ClearNotes implements ActionInterface
      */
     public function __construct(RuleAction $action)
     {
-        $this->action = $action;
     }
 
     /**
@@ -51,8 +47,7 @@ class ClearNotes implements ActionInterface
      * @param TransactionJournal $journal
      *
      * @return bool
-     *
-
+     * @throws \Exception
      */
     public function act(TransactionJournal $journal): bool
     {

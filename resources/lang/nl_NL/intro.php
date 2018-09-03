@@ -1,8 +1,8 @@
 <?php
-declare(strict_types=1);
+
 /**
  * intro.php
- * Copyright (c) 2017 thegrumpydictator@gmail.com
+ * Copyright (c) 2018 thegrumpydictator@gmail.com
  *
  * This file is part of Firefly III.
  *
@@ -19,6 +19,8 @@ declare(strict_types=1);
  * You should have received a copy of the GNU General Public License
  * along with Firefly III. If not, see <http://www.gnu.org/licenses/>.
  */
+
+declare(strict_types=1);
 
 return [
     // index
@@ -91,6 +93,7 @@ return [
     'piggy-banks_show_piggyEvents'                            => 'Eventuele stortingen (van en naar) worden hier ook vermeld.',
 
     // bill index
+    'bills_index_rules'                                       => 'Hier zie je welke regels een actie hebben voor dit contract',
     'bills_index_paid_in_period'                              => 'Dit veld geeft aan wanneer het contract het laatst is betaald.',
     'bills_index_expected_in_period'                          => 'Dit veld geeft aan voor elk contract of en wanneer je hem weer moet betalen.',
 
@@ -100,8 +103,9 @@ return [
     'bills_show_billChart'                                    => 'Deze grafiek toont de transacties gekoppeld aan dit contract.',
 
     // create bill
+    'bills_create_intro'                                      => 'Gebruik contracten om de hoeveelheid geld te volgen die je elke periode moet betalen. Denk aan uitgaven zoals huur, verzekering of hypotheekbetalingen.',
     'bills_create_name'                                       => 'Gebruik een beschrijvende naam zoals "huur" of "zorgverzekering".',
-    'bills_create_match'                                      => 'Om transacties te koppelen gebruik je termen uit de transacties of de bijbehorende crediteur. Alle termen moeten overeen komen.',
+    //'bills_create_match'                                      => 'To match transactions, use terms from those transactions or the expense account involved. All words must match.',
     'bills_create_amount_min_holder'                          => 'Stel ook een minimum- en maximumbedrag in.',
     'bills_create_repeat_freq_holder'                         => 'De meeste contracten herhalen maandelijks, maar dat kan je eventueel veranderen.',
     'bills_create_skip_holder'                                => 'Als een contract elke twee weken herhaalt, zet je het "skip"-veld op 1 om elke andere week over te slaan.',

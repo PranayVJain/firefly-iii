@@ -34,10 +34,9 @@ use Tests\TestCase;
 class SetCategoryTest extends TestCase
 {
     /**
-     * @covers \FireflyIII\TransactionRules\Actions\SetCategory::__construct()
-     * @covers \FireflyIII\TransactionRules\Actions\SetCategory::act()
+     * @covers \FireflyIII\TransactionRules\Actions\SetCategory
      */
-    public function testAct()
+    public function testAct(): void
     {
         // get journal, remove all budgets
         $journal  = TransactionJournal::inRandomOrder()->whereNull('deleted_at')->first();

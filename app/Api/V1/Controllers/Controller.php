@@ -1,5 +1,5 @@
 <?php
-declare(strict_types=1);
+
 /**
  * Controller.php
  * Copyright (c) 2018 thegrumpydictator@gmail.com
@@ -20,12 +20,12 @@ declare(strict_types=1);
  * along with Firefly III. If not, see <http://www.gnu.org/licenses/>.
  */
 
+declare(strict_types=1);
+
 namespace FireflyIII\Api\V1\Controllers;
 
 use Carbon\Carbon;
 use Carbon\Exceptions\InvalidDateException;
-use FireflyConfig;
-use FireflyIII\Exceptions\FireflyException;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Foundation\Bus\DispatchesJobs;
 use Illuminate\Foundation\Validation\ValidatesRequests;
@@ -37,67 +37,62 @@ use Symfony\Component\HttpFoundation\ParameterBag;
  * Class Controller.
  *
  * @codeCoverageIgnore
+ * @SuppressWarnings(PHPMD.NumberOfChildren)
  */
 class Controller extends BaseController
 {
     use AuthorizesRequests, DispatchesJobs, ValidatesRequests;
 
-    /** @var ParameterBag */
+    /** @var ParameterBag Parameters from the URI are stored here. */
     protected $parameters;
 
     /**
      * Controller constructor.
      *
-     * @throws FireflyException
      */
     public function __construct()
     {
-        // is site a demo site?
-        $isDemoSite = FireflyConfig::get('is_demo_site', config('firefly.configuration.is_demo_site'))->data;
-
-        // do not expose API on demo site:
-        if (true === $isDemoSite) {
-            throw new FireflyException('The API is not available on the demo site.');
-        }
-
         // get global parameters
         $this->parameters = $this->getParameters();
     }
 
     /**
+     * Method to help build URI's.
+     *
      * @return string
+     *
+     * @SuppressWarnings(PHPMD.CyclomaticComplexity)
      */
     protected function buildParams(): string
     {
         $return = '?';
         $params = [];
         foreach ($this->parameters as $key => $value) {
-            if ($key === 'page') {
+            if ('page' === $key) {
                 continue;
             }
             if ($value instanceof Carbon) {
                 $params[$key] = $value->format('Y-m-d');
+                continue;
             }
-            if (!$value instanceof Carbon) {
-                $params[$key] = $value;
-            }
+            $params[$key] = $value;
         }
         $return .= http_build_query($params);
-        if (strlen($return) === 1) {
-            return '';
-        }
 
         return $return;
     }
 
     /**
+     * Method to grab all parameters from the URI.
+     *
      * @return ParameterBag
+     * @SuppressWarnings(PHPMD.CyclomaticComplexity)
      */
     private function getParameters(): ParameterBag
     {
         $bag  = new ParameterBag;
         $page = (int)request()->get('page');
-        if ($page === 0) {
+        if (0 === $page) {
             $page = 1;
         }
         $bag->set('page', $page);

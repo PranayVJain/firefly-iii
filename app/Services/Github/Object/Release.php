@@ -27,7 +27,12 @@ use Carbon\Carbon;
 
 
 /**
+ *
  * Class Release
+ *
+ * @SuppressWarnings(PHPMD.ShortVariable)
+ *
+ * @codeCoverageIgnore
  */
 class Release extends GithubObject
 {

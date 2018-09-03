@@ -23,8 +23,10 @@ declare(strict_types=1);
 
 namespace FireflyIII\Services\Spectre\Request;
 
+use FireflyIII\Exceptions\FireflyException;
 use FireflyIII\Services\Spectre\Object\Customer;
 use FireflyIII\Services\Spectre\Object\Login;
+use Illuminate\Support\Collection;
 use Log;
 
 /**
@@ -39,9 +41,8 @@ class ListLoginsRequest extends SpectreRequest
     private $logins = [];
 
     /**
-     *
-     * @throws \FireflyIII\Services\Spectre\Exception\SpectreException
-     * @throws \FireflyIII\Exceptions\FireflyException
+     * @throws FireflyException
+     * @SuppressWarnings(PHPMD.CyclomaticComplexity)
      */
     public function call(): void
     {
@@ -50,11 +51,11 @@ class ListLoginsRequest extends SpectreRequest
         while ($hasNextPage) {
             Log::debug(sprintf('Now calling ListLoginsRequest for next_id %d', $nextId));
             $parameters = ['from_id' => $nextId, 'customer_id' => $this->customer->getId()];
-            $uri        = '/api/v3/logins/?' . http_build_query($parameters);
+            $uri        = '/api/v4/logins/?' . http_build_query($parameters);
             $response   = $this->sendSignedSpectreGet($uri, []);
 
             // count entries:
-            Log::debug(sprintf('Found %d entries in data-array', count($response['data'])));
+            Log::debug(sprintf('Found %d entries in data-array', \count($response['data'])));
 
             // extract next ID
             $hasNextPage = false;
@@ -62,15 +63,20 @@ class ListLoginsRequest extends SpectreRequest
                 $hasNextPage = true;
                 $nextId      = $response['meta']['next_id'];
                 Log::debug(sprintf('Next ID is now %d.', $nextId));
-            } else {
-                Log::debug('No next page.');
             }
-
+            $collection = new Collection;
             // store logins:
             /** @var array $loginArray */
             foreach ($response['data'] as $loginArray) {
-                $this->logins[] = new Login($loginArray);
+                $collection->push(new Login($loginArray));
             }
+            // sort logins by date created:
+            $sorted       = $collection->sortByDesc(
+                function (Login $login) {
+                    return $login->getUpdatedAt()->timestamp;
+                }
+            );
+            $this->logins = $sorted->toArray();
         }
     }
 

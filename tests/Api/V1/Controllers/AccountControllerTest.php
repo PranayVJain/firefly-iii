@@ -40,19 +40,19 @@ class AccountControllerTest extends TestCase
     /**
      *
      */
-    public function setUp()
+    public function setUp(): void
     {
         parent::setUp();
         Passport::actingAs($this->user());
-        Log::debug(sprintf('Now in %s.', get_class($this)));
+        Log::debug(sprintf('Now in %s.', \get_class($this)));
     }
 
     /**
      * Destroy account over API.
      *
-     * @covers \FireflyIII\Api\V1\Controllers\AccountController::delete
+     * @covers \FireflyIII\Api\V1\Controllers\AccountController
      */
-    public function testDelete()
+    public function testDelete(): void
     {
         // mock stuff:
         $repository    = $this->mock(AccountRepositoryInterface::class);
@@ -72,11 +72,11 @@ class AccountControllerTest extends TestCase
     }
 
     /**
-     * @covers \FireflyIII\Api\V1\Controllers\AccountController::__construct
-     * @covers \FireflyIII\Api\V1\Controllers\AccountController::index
-     * @covers \FireflyIII\Api\V1\Controllers\AccountController::mapTypes
+     * Test the list of accounts.
+     *
+     * @covers \FireflyIII\Api\V1\Controllers\AccountController
      */
-    public function testIndex()
+    public function testIndex(): void
     {
         // create stuff
         $accounts = factory(Account::class, 10)->create();
@@ -110,12 +110,10 @@ class AccountControllerTest extends TestCase
     /**
      * Opening balance without date.
      *
-     * @covers \FireflyIII\Api\V1\Controllers\AccountController::store
-     * @covers \FireflyIII\Api\V1\Requests\AccountRequest::authorize
-     * @covers \FireflyIII\Api\V1\Requests\AccountRequest::rules
-     * @covers \FireflyIII\Api\V1\Requests\AccountRequest::getAll
+     * @covers \FireflyIII\Api\V1\Controllers\AccountController
+     * @covers \FireflyIII\Api\V1\Requests\AccountRequest
      */
-    public function testInvalidBalance()
+    public function testInvalidBalance(): void
     {
         // mock repositories
         $repository    = $this->mock(AccountRepositoryInterface::class);
@@ -127,12 +125,13 @@ class AccountControllerTest extends TestCase
 
         // data to submit
         $data = [
-            'name'            => 'Some new asset account #' . random_int(1, 10000),
-            'currency_id'     => 1,
-            'type'            => 'asset',
-            'active'          => 1,
-            'account_role'    => 'defaultAsset',
-            'opening_balance' => '123.45',
+            'name'              => 'Some new asset account #' . random_int(1, 10000),
+            'currency_id'       => 1,
+            'type'              => 'asset',
+            'active'            => 1,
+            'include_net_worth' => 1,
+            'account_role'      => 'defaultAsset',
+            'opening_balance'   => '123.45',
         ];
 
         // test API
@@ -152,12 +151,10 @@ class AccountControllerTest extends TestCase
     /**
      * CC type present when account is a credit card.
      *
-     * @covers \FireflyIII\Api\V1\Controllers\AccountController::store
-     * @covers \FireflyIII\Api\V1\Requests\AccountRequest::authorize
-     * @covers \FireflyIII\Api\V1\Requests\AccountRequest::rules
-     * @covers \FireflyIII\Api\V1\Requests\AccountRequest::getAll
+     * @covers \FireflyIII\Api\V1\Controllers\AccountController
+     * @covers \FireflyIII\Api\V1\Requests\AccountRequest
      */
-    public function testNoCreditCardData()
+    public function testNoCreditCardData(): void
     {
         // mock repositories
         $repository    = $this->mock(AccountRepositoryInterface::class);
@@ -169,11 +166,12 @@ class AccountControllerTest extends TestCase
 
         // data to submit
         $data = [
-            'name'         => 'Some new asset account #' . random_int(1, 10000),
-            'type'         => 'asset',
-            'active'       => 1,
-            'account_role' => 'ccAsset',
-            'currency_id'  => 1,
+            'name'              => 'Some new asset account #' . random_int(1, 10000),
+            'type'              => 'asset',
+            'active'            => 1,
+            'include_net_worth' => 1,
+            'account_role'      => 'ccAsset',
+            'currency_id'       => 1,
         ];
 
         // test API
@@ -194,12 +192,10 @@ class AccountControllerTest extends TestCase
     /**
      * No currency information
      *
-     * @covers \FireflyIII\Api\V1\Controllers\AccountController::store
-     * @covers \FireflyIII\Api\V1\Requests\AccountRequest::authorize
-     * @covers \FireflyIII\Api\V1\Requests\AccountRequest::rules
-     * @covers \FireflyIII\Api\V1\Requests\AccountRequest::getAll
+     * @covers \FireflyIII\Api\V1\Controllers\AccountController
+     * @covers \FireflyIII\Api\V1\Requests\AccountRequest
      */
-    public function testNoCurrencyInfo()
+    public function testNoCurrencyInfo(): void
     {
         // mock repositories
         $repository    = $this->mock(AccountRepositoryInterface::class);
@@ -211,10 +207,11 @@ class AccountControllerTest extends TestCase
 
         // data to submit
         $data = [
-            'name'         => 'Some new asset account #' . random_int(1, 10000),
-            'type'         => 'asset',
-            'active'       => 1,
-            'account_role' => 'defaultAsset',
+            'name'              => 'Some new asset account #' . random_int(1, 10000),
+            'type'              => 'asset',
+            'active'            => 1,
+            'include_net_worth' => 1,
+            'account_role'      => 'defaultAsset',
         ];
 
         // test API
@@ -233,10 +230,12 @@ class AccountControllerTest extends TestCase
     }
 
     /**
-     * @covers \FireflyIII\Api\V1\Controllers\AccountController::show
+     * Show an account.
+     *
+     * @covers \FireflyIII\Api\V1\Controllers\AccountController
      */
 
-    public function testShow()
+    public function testShow(): void
     {
         // create stuff
         $account = $this->user()->accounts()->first();
@@ -266,56 +265,12 @@ class AccountControllerTest extends TestCase
     }
 
     /**
-     * Name already in use.
-     *
-     * @covers \FireflyIII\Api\V1\Controllers\AccountController::store
-     * @covers \FireflyIII\Api\V1\Requests\AccountRequest::authorize
-     * @covers \FireflyIII\Api\V1\Requests\AccountRequest::rules
-     * @covers \FireflyIII\Api\V1\Requests\AccountRequest::getAll
-     */
-    public function testStoreNotUnique()
-    {
-        // mock repositories
-        $repository    = $this->mock(AccountRepositoryInterface::class);
-        $currencyRepos = $this->mock(CurrencyRepositoryInterface::class);
-
-        // mock calls:
-        $repository->shouldReceive('setUser')->once();
-        $currencyRepos->shouldReceive('setUser')->once();
-
-        $account = $this->user()->accounts()->where('account_type_id', 3)->first();
-        // data to submit
-        $data = [
-            'name'         => $account->name,
-            'currency_id'  => 1,
-            'type'         => 'asset',
-            'active'       => 1,
-            'account_role' => 'defaultAsset',
-        ];
-
-        // test API
-        $response = $this->post('/api/v1/accounts', $data, ['Accept' => 'application/json']);
-        $response->assertStatus(422);
-        $response->assertExactJson(
-            [
-                'message' => 'The given data was invalid.',
-                'errors'  => [
-                    'name' => ['This account name is already in use'],
-                ],
-            ]
-        );
-        $response->assertHeader('Content-Type', 'application/json');
-    }
-
-    /**
      * Send correct data. Should call account repository store method.
      *
-     * @covers \FireflyIII\Api\V1\Controllers\AccountController::store
-     * @covers \FireflyIII\Api\V1\Requests\AccountRequest::authorize
-     * @covers \FireflyIII\Api\V1\Requests\AccountRequest::rules
-     * @covers \FireflyIII\Api\V1\Requests\AccountRequest::getAll
+     * @covers \FireflyIII\Api\V1\Controllers\AccountController
+     * @covers \FireflyIII\Api\V1\Requests\AccountRequest
      */
-    public function testStoreValid()
+    public function testStoreLiability(): void
     {
         // mock repositories
         $repository    = $this->mock(AccountRepositoryInterface::class);
@@ -336,11 +291,101 @@ class AccountControllerTest extends TestCase
 
         // data to submit
         $data = [
-            'name'         => 'Some new asset account #' . random_int(1, 10000),
-            'currency_id'  => 1,
-            'type'         => 'asset',
-            'active'       => 1,
-            'account_role' => 'defaultAsset',
+            'name'                 => 'Some new liability account #' . random_int(1, 10000),
+            'currency_id'          => 1,
+            'type'                 => 'liability',
+            'active'               => 1,
+            'include_net_worth'    => 1,
+            'liability_amount'     => '10000',
+            'liability_start_date' => '2016-01-01',
+            'liability_type'       => 'mortgage',
+            'interest'             => '1',
+            'interest_period'      => 'daily',
+        ];
+
+        // test API
+        $response = $this->post('/api/v1/accounts', $data, ['Accept' => 'application/json']);
+        $response->assertSee($account->name);
+        $response->assertStatus(200);
+        $response->assertJson(['data' => ['type' => 'accounts', 'links' => true],]);
+        $response->assertHeader('Content-Type', 'application/vnd.api+json');
+
+    }
+
+    /**
+     * Name already in use.
+     *
+     * @covers \FireflyIII\Api\V1\Controllers\AccountController
+     * @covers \FireflyIII\Api\V1\Requests\AccountRequest
+     */
+    public function testStoreNotUnique(): void
+    {
+        // mock repositories
+        $repository    = $this->mock(AccountRepositoryInterface::class);
+        $currencyRepos = $this->mock(CurrencyRepositoryInterface::class);
+
+        // mock calls:
+        $repository->shouldReceive('setUser')->once();
+        $currencyRepos->shouldReceive('setUser')->once();
+
+        $account = $this->user()->accounts()->where('account_type_id', 3)->first();
+        // data to submit
+        $data = [
+            'name'              => $account->name,
+            'currency_id'       => 1,
+            'type'              => 'asset',
+            'active'            => 1,
+            'include_net_worth' => 1,
+            'account_role'      => 'defaultAsset',
+        ];
+
+        // test API
+        $response = $this->post('/api/v1/accounts', $data, ['Accept' => 'application/json']);
+        $response->assertStatus(422);
+        $response->assertExactJson(
+            [
+                'message' => 'The given data was invalid.',
+                'errors'  => [
+                    'name' => ['This account name is already in use.'],
+                ],
+            ]
+        );
+        $response->assertHeader('Content-Type', 'application/json');
+    }
+
+    /**
+     * Send correct data. Should call account repository store method.
+     *
+     * @covers \FireflyIII\Api\V1\Controllers\AccountController
+     * @covers \FireflyIII\Api\V1\Requests\AccountRequest
+     */
+    public function testStoreValid(): void
+    {
+        // mock repositories
+        $repository    = $this->mock(AccountRepositoryInterface::class);
+        $currencyRepos = $this->mock(CurrencyRepositoryInterface::class);
+        $account       = $this->user()->accounts()->first();
+        // mock calls:
+        $repository->shouldReceive('setUser');
+        $repository->shouldReceive('store')->once()->andReturn($account);
+        $repository->shouldReceive('getOpeningBalanceAmount')->andReturn('10');
+        $repository->shouldReceive('getOpeningBalanceDate')->andReturn('2018-01-01');
+        $currencyRepos->shouldReceive('setUser')->once();
+
+        $repository->shouldReceive('getMetaValue')->withArgs([Mockery::any(), 'accountRole'])->andReturn('defaultAsset');
+        $repository->shouldReceive('getMetaValue')->withArgs([Mockery::any(), 'currency_id'])->andReturn('1');
+        $repository->shouldReceive('getMetaValue')->withArgs([Mockery::any(), 'accountNumber'])->andReturn('1');
+        $repository->shouldReceive('getMetaValue')->withArgs([Mockery::any(), 'BIC'])->andReturn('BIC');
+        $repository->shouldReceive('getNoteText')->withArgs([Mockery::any()])->andReturn('Hello');
+
+        // data to submit
+        $data = [
+            'name'              => 'Some new asset account #' . random_int(1, 10000),
+            'currency_id'       => 1,
+            'type'              => 'asset',
+            'active'            => 1,
+            'include_net_worth' => 1,
+            'account_role'      => 'defaultAsset',
         ];
 
         // test API
@@ -354,12 +399,10 @@ class AccountControllerTest extends TestCase
     /**
      * Send correct data. Should call account repository store method.
      *
-     * @covers \FireflyIII\Api\V1\Controllers\AccountController::store
-     * @covers \FireflyIII\Api\V1\Requests\AccountRequest::authorize
-     * @covers \FireflyIII\Api\V1\Requests\AccountRequest::rules
-     * @covers \FireflyIII\Api\V1\Requests\AccountRequest::getAll
+     * @covers \FireflyIII\Api\V1\Controllers\AccountController
+     * @covers \FireflyIII\Api\V1\Requests\AccountRequest
      */
-    public function testStoreWithCurrencyCode()
+    public function testStoreWithCurrencyCode(): void
     {
         // mock repositories
         $repository    = $this->mock(AccountRepositoryInterface::class);
@@ -384,11 +427,12 @@ class AccountControllerTest extends TestCase
 
         // data to submit
         $data = [
-            'name'          => 'Some new asset account #' . random_int(1, 10000),
-            'currency_code' => 'EUR',
-            'type'          => 'asset',
-            'active'        => 1,
-            'account_role'  => 'defaultAsset',
+            'name'              => 'Some new asset account #' . random_int(1, 10000),
+            'currency_code'     => 'EUR',
+            'type'              => 'asset',
+            'active'            => 1,
+            'include_net_worth' => 1,
+            'account_role'      => 'defaultAsset',
         ];
 
         // test API
@@ -402,10 +446,10 @@ class AccountControllerTest extends TestCase
     /**
      * Update first asset account we find. Name can be the same as it was.
      *
-     * @covers \FireflyIII\Api\V1\Controllers\AccountController::update
-     * @covers \FireflyIII\Api\V1\Requests\AccountRequest::rules
+     * @covers \FireflyIII\Api\V1\Controllers\AccountController
+     * @covers \FireflyIII\Api\V1\Requests\AccountRequest
      */
-    public function testUpdate()
+    public function testUpdate(): void
     {
         // mock repositories
         $repository    = $this->mock(AccountRepositoryInterface::class);
@@ -427,11 +471,12 @@ class AccountControllerTest extends TestCase
         $account = $this->user()->accounts()->first();
         // data to submit
         $data = [
-            'name'         => $account->name,
-            'currency_id'  => 1,
-            'type'         => 'asset',
-            'active'       => 1,
-            'account_role' => 'defaultAsset',
+            'name'              => $account->name,
+            'currency_id'       => 1,
+            'type'              => 'asset',
+            'active'            => 1,
+            'include_net_worth' => 1,
+            'account_role'      => 'defaultAsset',
         ];
 
         // test API
@@ -445,10 +490,10 @@ class AccountControllerTest extends TestCase
     /**
      * Update first asset account we find. Name can be the same as it was.
      *
-     * @covers \FireflyIII\Api\V1\Controllers\AccountController::update
-     * @covers \FireflyIII\Api\V1\Requests\AccountRequest::rules
+     * @covers \FireflyIII\Api\V1\Controllers\AccountController
+     * @covers \FireflyIII\Api\V1\Requests\AccountRequest
      */
-    public function testUpdateCurrencyCode()
+    public function testUpdateCurrencyCode(): void
     {
         // mock repositories
         $repository    = $this->mock(AccountRepositoryInterface::class);
@@ -471,11 +516,12 @@ class AccountControllerTest extends TestCase
         $account = $this->user()->accounts()->first();
         // data to submit
         $data = [
-            'name'          => $account->name,
-            'currency_code' => 'EUR',
-            'type'          => 'asset',
-            'active'        => 1,
-            'account_role'  => 'defaultAsset',
+            'name'              => $account->name,
+            'currency_code'     => 'EUR',
+            'type'              => 'asset',
+            'active'            => 1,
+            'include_net_worth' => 1,
+            'account_role'      => 'defaultAsset',
         ];
 
         // test API

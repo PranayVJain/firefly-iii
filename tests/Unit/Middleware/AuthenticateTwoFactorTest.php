@@ -36,9 +36,23 @@ use Tests\TestCase;
 class AuthenticateTwoFactorTest extends TestCase
 {
     /**
-     * @covers \FireflyIII\Http\Middleware\AuthenticateTwoFactor::handle
+     * Set up test
      */
-    public function testMiddleware()
+    public function setUp(): void
+    {
+        parent::setUp();
+
+        Route::middleware(AuthenticateTwoFactor::class)->any(
+            '/_test/authenticate', function () {
+            return 'OK';
+        }
+        );
+    }
+
+    /**
+     * @covers \FireflyIII\Http\Middleware\AuthenticateTwoFactor
+     */
+    public function testMiddleware(): void
     {
         $this->withoutExceptionHandling();
         $response = $this->get('/_test/authenticate');
@@ -54,9 +68,9 @@ class AuthenticateTwoFactorTest extends TestCase
      * cookie     : false
      *
      *
-     * @covers \FireflyIII\Http\Middleware\AuthenticateTwoFactor::handle
+     * @covers \FireflyIII\Http\Middleware\AuthenticateTwoFactor
      */
-    public function testMiddlewareNoTwoFA()
+    public function testMiddlewareNoTwoFA(): void
     {
         $this->withoutExceptionHandling();
         $user          = $this->user();
@@ -85,9 +99,9 @@ class AuthenticateTwoFactorTest extends TestCase
      * cookie     : false
      *
      *
-     * @covers \FireflyIII\Http\Middleware\AuthenticateTwoFactor::handle
+     * @covers \FireflyIII\Http\Middleware\AuthenticateTwoFactor
      */
-    public function testMiddlewareTwoFAAuthed()
+    public function testMiddlewareTwoFAAuthed(): void
     {
         $this->withoutExceptionHandling();
         $user          = $this->user();
@@ -118,9 +132,9 @@ class AuthenticateTwoFactorTest extends TestCase
      * cookie     : false
      *
      *
-     * @covers \FireflyIII\Http\Middleware\AuthenticateTwoFactor::handle
+     * @covers \FireflyIII\Http\Middleware\AuthenticateTwoFactor
      */
-    public function testMiddlewareTwoFANoSecret()
+    public function testMiddlewareTwoFANoSecret(): void
     {
         $this->withoutExceptionHandling();
         $user          = $this->user();
@@ -149,9 +163,9 @@ class AuthenticateTwoFactorTest extends TestCase
      * cookie     : false
      *
      *
-     * @covers \FireflyIII\Http\Middleware\AuthenticateTwoFactor::handle
+     * @covers \FireflyIII\Http\Middleware\AuthenticateTwoFactor
      */
-    public function testMiddlewareTwoFASecret()
+    public function testMiddlewareTwoFASecret(): void
     {
         $this->withoutExceptionHandling();
         $user          = $this->user();
@@ -173,19 +187,5 @@ class AuthenticateTwoFactorTest extends TestCase
         $response = $this->call('GET', '/_test/authenticate', [], $cookie);
         $this->assertEquals(Response::HTTP_FOUND, $response->getStatusCode());
         $response->assertRedirect(route('two-factor.index'));
-    }
-
-    /**
-     * Set up test
-     */
-    protected function setUp()
-    {
-        parent::setUp();
-
-        Route::middleware(AuthenticateTwoFactor::class)->any(
-            '/_test/authenticate', function () {
-            return 'OK';
-        }
-        );
     }
 }

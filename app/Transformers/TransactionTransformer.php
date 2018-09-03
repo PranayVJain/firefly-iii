@@ -31,6 +31,7 @@ use FireflyIII\Models\TransactionType;
 use League\Fractal\Resource\Collection as FractalCollection;
 use League\Fractal\Resource\Item;
 use League\Fractal\TransformerAbstract;
+use Log;
 use Symfony\Component\HttpFoundation\ParameterBag;
 
 /**
@@ -157,16 +158,12 @@ class TransactionTransformer extends TransformerAbstract
         $categoryName = null;
         $budgetId     = null;
         $budgetName   = null;
-        $categoryId   = null === $transaction->transaction_category_id ? $transaction->transaction_journal_category_id
-            : $transaction->transaction_category_id;
-        $categoryName = null === $transaction->transaction_category_name ? $transaction->transaction_journal_category_name
-            : $transaction->transaction_category_name;
+        $categoryId   = $transaction->transaction_category_id ?? $transaction->transaction_journal_category_id;
+        $categoryName = $transaction->transaction_category_name ?? $transaction->transaction_journal_category_name;
 
         if ($transaction->transaction_type_type === TransactionType::WITHDRAWAL) {
-            $budgetId   = null === $transaction->transaction_budget_id ? $transaction->transaction_journal_budget_id
-                : $transaction->transaction_budget_id;
-            $budgetName = null === $transaction->transaction_budget_name ? $transaction->transaction_journal_budget_name
-                : $transaction->transaction_budget_name;
+            $budgetId   = $transaction->transaction_budget_id ?? $transaction->transaction_journal_budget_id;
+            $budgetName = $transaction->transaction_budget_name ?? $transaction->transaction_journal_budget_name;
         }
         /** @var Note $dbNote */
         $dbNote = $transaction->transactionJournal->notes()->first();
@@ -215,10 +212,10 @@ class TransactionTransformer extends TransformerAbstract
         if (null !== $transaction->transaction_foreign_amount) {
             $data['foreign_amount'] = round($transaction->transaction_foreign_amount, (int)$transaction->foreign_currency_dp);
         }
-
         // switch on type for consistency
         switch ($transaction->transaction_type_type) {
             case TransactionType::WITHDRAWAL:
+                Log::debug(sprintf('%d is a withdrawal', $transaction->journal_id));
                 $data['source_id']        = $transaction->account_id;
                 $data['source_name']      = $transaction->account_name;
                 $data['source_iban']      = $transaction->account_iban;
@@ -227,6 +224,8 @@ class TransactionTransformer extends TransformerAbstract
                 $data['destination_name'] = $transaction->opposing_account_name;
                 $data['destination_iban'] = $transaction->opposing_account_iban;
                 $data['destination_type'] = $transaction->opposing_account_type;
+                Log::debug(sprintf('source_id / account_id is %d', $transaction->account_id));
+                Log::debug(sprintf('source_name / account_name is "%s"', $transaction->account_name));
                 break;
             case TransactionType::DEPOSIT:
             case TransactionType::TRANSFER:
@@ -251,7 +250,7 @@ class TransactionTransformer extends TransformerAbstract
         }
 
         // expand description.
-        if (strlen((string)$transaction->transaction_description) > 0) {
+        if (\strlen((string)$transaction->transaction_description) > 0) {
             $data['description'] = $transaction->transaction_description . ' (' . $transaction->description . ')';
         }
 

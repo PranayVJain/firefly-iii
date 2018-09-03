@@ -1,8 +1,8 @@
 <?php
-declare(strict_types=1);
+
 /**
  * intro.php
- * Copyright (c) 2017 thegrumpydictator@gmail.com
+ * Copyright (c) 2018 thegrumpydictator@gmail.com
  *
  * This file is part of Firefly III.
  *
@@ -19,6 +19,8 @@ declare(strict_types=1);
  * You should have received a copy of the GNU General Public License
  * along with Firefly III. If not, see <http://www.gnu.org/licenses/>.
  */
+
+declare(strict_types=1);
 
 return [
     // index
@@ -91,6 +93,7 @@ return [
     'piggy-banks_show_piggyEvents'                            => 'Cualquier adición o eliminación también se ponen en lista aquí.',
 
     // bill index
+    'bills_index_rules'                                       => 'Here you see which rules will check if this bill is hit',
     'bills_index_paid_in_period'                              => 'Este campo indica cuando la factura fue pagada por última vez.',
     'bills_index_expected_in_period'                          => 'Este campo indica para cada factura si se espera que llegue la próxima factura.',
 
@@ -100,11 +103,12 @@ return [
     'bills_show_billChart'                                    => 'Este gráfico muestra las transacciones vinculadas con esta factura.',
 
     // create bill
+    'bills_create_intro'                                      => 'Use cuentas para rastrear la cantidad de dinero correspondiente a cada periodo. Piense en gastos como renta, seguro o pagos de credito de vivienda.',
     'bills_create_name'                                       => 'Use un nombre descriptivo como "alquiler" o "seguro de salud".',
-    'bills_create_match'                                      => 'Para hacer coincidir transacciones, use términos de esas transacciones o de la cuenta de gastos involucrada. Todas las palabras deben coincidir.',
+    //'bills_create_match'                                      => 'To match transactions, use terms from those transactions or the expense account involved. All words must match.',
     'bills_create_amount_min_holder'                          => 'Seleccione un monto mínimo y uno máximo para esta factura.',
     'bills_create_repeat_freq_holder'                         => 'Muchas facturas se repiten mensualmente, pero usted puede establecer otra frecuencia aquí.',
-    'bills_create_skip_holder'                                => 'Si una factura se repite cada 2 semanas por ejemplo, el campo "omitir" debe establecerse en "1" para omitir cada otra semana.',
+    'bills_create_skip_holder'                                => 'Si una cuenta se repite cada 2 semanas, el campo "saltar" debe estar marcado como "1" para saltar una semana y generar el gasto cada 2.',
 
     // rules index
     'rules_index_intro'                                       => 'Firefly III le permite administrar reglas, que automáticamente se aplicaran para cualquier transacción que cree o edite.',

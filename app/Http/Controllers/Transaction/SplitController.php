@@ -22,51 +22,42 @@ declare(strict_types=1);
 
 namespace FireflyIII\Http\Controllers\Transaction;
 
-use ExpandedForm;
 use FireflyIII\Events\UpdatedTransactionJournal;
 use FireflyIII\Exceptions\FireflyException;
 use FireflyIII\Helpers\Attachments\AttachmentHelperInterface;
-use FireflyIII\Helpers\Collector\JournalCollectorInterface;
 use FireflyIII\Http\Controllers\Controller;
 use FireflyIII\Http\Requests\SplitJournalFormRequest;
-use FireflyIII\Models\Account;
-use FireflyIII\Models\AccountType;
-use FireflyIII\Models\Transaction;
 use FireflyIII\Models\TransactionJournal;
-use FireflyIII\Repositories\Account\AccountRepositoryInterface;
 use FireflyIII\Repositories\Budget\BudgetRepositoryInterface;
 use FireflyIII\Repositories\Currency\CurrencyRepositoryInterface;
 use FireflyIII\Repositories\Journal\JournalRepositoryInterface;
-use FireflyIII\Transformers\TransactionTransformer;
+use FireflyIII\Support\Http\Controllers\ModelInformation;
+use FireflyIII\Support\Http\Controllers\RequestInformation;
 use Illuminate\Http\Request;
-use Illuminate\Support\Collection;
-use Preferences;
-use Session;
-use Steam;
-use Symfony\Component\HttpFoundation\ParameterBag;
 use View;
 
 /**
  * Class SplitController.
+ *
+ * @SuppressWarnings(PHPMD.CouplingBetweenObjects)
  */
 class SplitController extends Controller
 {
-    /** @var AccountRepositoryInterface */
-    private $accounts;
+    use ModelInformation, RequestInformation;
 
-    /** @var AttachmentHelperInterface */
+    /** @var AttachmentHelperInterface Attachment helper */
     private $attachments;
 
-    /** @var BudgetRepositoryInterface */
+    /** @var BudgetRepositoryInterface The budget repository */
     private $budgets;
 
-    /** @var CurrencyRepositoryInterface */
+    /** @var CurrencyRepositoryInterface The currency repository */
     private $currencies;
-    /** @var JournalRepositoryInterface */
+    /** @var JournalRepositoryInterface Journals and transactions overview */
     private $repository;
 
     /**
-     *
+     * SplitController constructor.
      */
     public function __construct()
     {
@@ -75,13 +66,12 @@ class SplitController extends Controller
         // some useful repositories:
         $this->middleware(
             function ($request, $next) {
-                $this->accounts    = app(AccountRepositoryInterface::class);
                 $this->budgets     = app(BudgetRepositoryInterface::class);
                 $this->attachments = app(AttachmentHelperInterface::class);
                 $this->currencies  = app(CurrencyRepositoryInterface::class);
                 $this->repository  = app(JournalRepositoryInterface::class);
                 app('view')->share('mainTitleIcon', 'fa-share-alt');
-                app('view')->share('title', trans('firefly.split-transactions'));
+                app('view')->share('title', (string)trans('firefly.split-transactions'));
 
                 return $next($request);
             }
@@ -89,6 +79,8 @@ class SplitController extends Controller
     }
 
     /**
+     * Edit a split.
+     *
      * @param Request            $request
      * @param TransactionJournal $journal
      *
@@ -100,50 +92,54 @@ class SplitController extends Controller
         if ($this->isOpeningBalance($journal)) {
             return $this->redirectToAccount($journal); // @codeCoverageIgnore
         }
+        // basic fields:
+        $uploadSize   = min(app('steam')->phpBytes(ini_get('upload_max_filesize')), app('steam')->phpBytes(ini_get('post_max_size')));
+        $subTitle     = (string)trans('breadcrumbs.edit_journal', ['description' => $journal->description]);
+        $subTitleIcon = 'fa-pencil';
 
-        $uploadSize     = min(Steam::phpBytes(ini_get('upload_max_filesize')), Steam::phpBytes(ini_get('post_max_size')));
-        $currencies     = $this->currencies->get();
-        $optionalFields = Preferences::get('transaction_journal_optional_fields', [])->data;
-        $budgets        = ExpandedForm::makeSelectListWithEmpty($this->budgets->getActiveBudgets());
+        // lists and collections
+        $currencies = $this->currencies->get();
+        $budgets    = app('expandedform')->makeSelectListWithEmpty($this->budgets->getActiveBudgets());
+
+        // other fields
+        $optionalFields = app('preferences')->get('transaction_journal_optional_fields', [])->data;
         $preFilled      = $this->arrayFromJournal($request, $journal);
-        $subTitle       = trans('breadcrumbs.edit_journal', ['description' => $journal->description]);
-        $subTitleIcon   = 'fa-pencil';
-        $accountList    = $this->accounts->getAccountsByType([AccountType::ASSET, AccountType::DEFAULT]);
-        $accountArray   = [];
-        // account array to display currency info:
-        /** @var Account $account */
-        foreach ($accountList as $account) {
-            $accountArray[$account->id]                = $account;
-            $accountArray[$account->id]['currency_id'] = (int)$account->getMeta('currency_id');
-        }
 
         // put previous url in session if not redirect from store (not "return_to_edit").
         if (true !== session('transactions.edit-split.fromUpdate')) {
             $this->rememberPreviousUri('transactions.edit-split.uri');
         }
-        Session::forget('transactions.edit-split.fromUpdate');
+        session()->forget('transactions.edit-split.fromUpdate');
 
         return view(
             'transactions.split.edit', compact(
                                          'subTitleIcon', 'currencies', 'optionalFields', 'preFilled', 'subTitle', 'uploadSize', 'budgets',
-                                         'journal', 'accountArray'
+                                         'journal'
                                      )
         );
     }
 
     /**
+     * Store new split journal.
+     *
      * @param SplitJournalFormRequest $request
      * @param TransactionJournal      $journal
      *
      * @return $this|\Illuminate\Http\RedirectResponse|\Illuminate\Routing\Redirector
+     *
+     * @SuppressWarnings(PHPMD.ExcessiveMethodLength)
+     * @SuppressWarnings(PHPMD.CyclomaticComplexity)
      */
     public function update(SplitJournalFormRequest $request, TransactionJournal $journal)
     {
         if ($this->isOpeningBalance($journal)) {
             return $this->redirectToAccount($journal); // @codeCoverageIgnore
         }
-        $data    = $request->getAll();
-        $journal = $this->repository->update($journal, $data);
+        $data = $request->getAll();
+
+        // keep current bill:
+        $data['bill_id'] = $journal->bill_id;
+        $journal         = $this->repository->update($journal, $data);
 
         /** @var array $files */
         $files = $request->hasFile('attachments') ? $request->file('attachments') : null;
@@ -153,19 +149,19 @@ class SplitController extends Controller
 
         // flash messages
         // @codeCoverageIgnoreStart
-        if (count($this->attachments->getMessages()->get('attachments')) > 0) {
-            Session::flash('info', $this->attachments->getMessages()->get('attachments'));
+        if (\count($this->attachments->getMessages()->get('attachments')) > 0) {
+            session()->flash('info', $this->attachments->getMessages()->get('attachments'));
         }
         // @codeCoverageIgnoreEnd
 
         $type = strtolower($this->repository->getTransactionType($journal));
-        Session::flash('success', (string)trans('firefly.updated_' . $type, ['description' => $journal->description]));
-        Preferences::mark();
+        session()->flash('success', (string)trans('firefly.updated_' . $type, ['description' => $journal->description]));
+        app('preferences')->mark();
 
         // @codeCoverageIgnoreStart
         if (1 === (int)$request->get('return_to_edit')) {
             // set value so edit routine will not overwrite URL:
-            Session::put('transactions.edit-split.fromUpdate', true);
+            session()->put('transactions.edit-split.fromUpdate', true);
 
             return redirect(route('transactions.split.edit', [$journal->id]))->withInput(['return_to_edit' => 1]);
         }
@@ -175,100 +171,36 @@ class SplitController extends Controller
         return redirect($this->getPreviousUri('transactions.edit-split.uri'));
     }
 
+
     /**
-     * @param SplitJournalFormRequest|Request $request
-     * @param TransactionJournal              $journal
+     * Get info from old input.
      *
-     * @return array
-     * @throws FireflyException
-     */
-    private function arrayFromJournal(Request $request, TransactionJournal $journal): array
-    {
-        $sourceAccounts      = $this->repository->getJournalSourceAccounts($journal);
-        $destinationAccounts = $this->repository->getJournalDestinationAccounts($journal);
-        $array               = [
-            'journal_description'            => $request->old('journal_description', $journal->description),
-            'journal_amount'                 => $this->repository->getJournalTotal($journal),
-            'sourceAccounts'                 => $sourceAccounts,
-            'journal_source_account_id'      => $request->old('journal_source_account_id', $sourceAccounts->first()->id),
-            'journal_source_account_name'    => $request->old('journal_source_account_name', $sourceAccounts->first()->name),
-            'journal_destination_account_id' => $request->old('journal_destination_account_id', $destinationAccounts->first()->id),
-            'destinationAccounts'            => $destinationAccounts,
-            'what'                           => strtolower($this->repository->getTransactionType($journal)),
-            'date'                           => $request->old('date', $this->repository->getJournalDate($journal, null)),
-            'tags'                           => implode(',', $journal->tags->pluck('tag')->toArray()),
-
-            // all custom fields:
-            'interest_date'                  => $request->old('interest_date', $this->repository->getMetaField($journal, 'interest_date')),
-            'book_date'                      => $request->old('book_date', $this->repository->getMetaField($journal, 'book_date')),
-            'process_date'                   => $request->old('process_date', $this->repository->getMetaField($journal, 'process_date')),
-            'due_date'                       => $request->old('due_date', $this->repository->getMetaField($journal, 'due_date')),
-            'payment_date'                   => $request->old('payment_date', $this->repository->getMetaField($journal, 'payment_date')),
-            'invoice_date'                   => $request->old('invoice_date', $this->repository->getMetaField($journal, 'invoice_date')),
-            'internal_reference'             => $request->old('internal_reference', $this->repository->getMetaField($journal, 'internal_reference')),
-            'notes'                          => $request->old('notes', $this->repository->getNoteText($journal)),
-
-            // transactions.
-            'transactions'                   => $this->getTransactionDataFromJournal($journal),
-        ];
-        // update transactions array with old request data.
-
-        $array['transactions'] = $this->updateWithPrevious($array['transactions'], $request->old());
-
-        return $array;
-    }
-
-    /**
-     * @param TransactionJournal $journal
-     *
-     * @return array
-     * @throws FireflyException
-     */
-    private function getTransactionDataFromJournal(TransactionJournal $journal): array
-    {
-        // use collector to collect transactions.
-        $collector = app(JournalCollectorInterface::class);
-        $collector->setUser(auth()->user());
-        $collector->withOpposingAccount()->withCategoryInformation()->withBudgetInformation();
-        // filter on specific journals.
-        $collector->setJournals(new Collection([$journal]));
-        $set          = $collector->getJournals();
-        $transactions = [];
-        $transformer  = new TransactionTransformer(new ParameterBag);
-
-        /** @var Transaction $transaction */
-        foreach ($set as $transaction) {
-            if ($transaction->transaction_amount > 0) {
-                $transactions[] = $transformer->transform($transaction);
-            }
-        }
-
-        return $transactions;
-    }
-
-    /**
      * @param $array
      * @param $old
      *
      * @return array
+     *
+     * @SuppressWarnings(PHPMD.ExcessiveMethodLength)
+     * @SuppressWarnings(PHPMD.CyclomaticComplexity)
      */
-    private function updateWithPrevious($array, $old): array
+    protected function updateWithPrevious($array, $old): array // update object with new info
     {
-        if (0 === count($old) || !isset($old['transactions'])) {
+        if (0 === \count($old) || !isset($old['transactions'])) {
             return $array;
         }
         $old = $old['transactions'];
 
         foreach ($old as $index => $row) {
             if (isset($array[$index])) {
+                /** @noinspection SlowArrayOperationsInLoopInspection */
                 $array[$index] = array_merge($array[$index], $row);
                 continue;
             }
             // take some info from first transaction, that should at least exist.
             $array[$index]                            = $row;
-            $array[$index]['currency_id']             = $array[0]['transaction_currency_id'];
-            $array[$index]['currency_code']           = $array[0]['transaction_currency_code'] ?? '';
-            $array[$index]['currency_symbol']         = $array[0]['transaction_currency_symbol'] ?? '';
+            $array[$index]['currency_id']             = $array[0]['currency_id'];
+            $array[$index]['currency_code']           = $array[0]['currency_code'] ?? '';
+            $array[$index]['currency_symbol']         = $array[0]['currency_symbol'] ?? '';
             $array[$index]['foreign_amount']          = round($array[0]['foreign_destination_amount'] ?? '0', 12);
             $array[$index]['foreign_currency_id']     = $array[0]['foreign_currency_id'];
             $array[$index]['foreign_currency_code']   = $array[0]['foreign_currency_code'];

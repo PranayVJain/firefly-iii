@@ -36,12 +36,26 @@ use Tests\TestCase;
 class RangeTest extends TestCase
 {
     /**
+     * Set up test
+     */
+    public function setUp(): void
+    {
+        parent::setUp();
+
+        Route::middleware(Range::class)->any(
+            '/_test/range', function () {
+            return view('test.test');
+        }
+        );
+    }
+
+    /**
      * @covers \FireflyIII\Http\Middleware\Range
      */
-    public function testMiddlewareAuthenticated()
+    public function testMiddlewareAuthenticated(): void
     {
         $repository = $this->mock(JournalRepositoryInterface::class);
-        $repository->shouldReceive('first')->andReturn(TransactionJournal::first());
+        $repository->shouldReceive('firstNull')->andReturn(TransactionJournal::first());
         $this->withoutExceptionHandling();
         $this->be($this->user());
         $response = $this->get('/_test/range');
@@ -56,24 +70,10 @@ class RangeTest extends TestCase
     /**
      * @covers \FireflyIII\Http\Middleware\Range
      */
-    public function testMiddlewareNotAuthenticated()
+    public function testMiddlewareNotAuthenticated(): void
     {
         $this->withoutExceptionHandling();
         $response = $this->get('/_test/range');
         $this->assertEquals(Response::HTTP_OK, $response->getStatusCode());
-    }
-
-    /**
-     * Set up test
-     */
-    protected function setUp()
-    {
-        parent::setUp();
-
-        Route::middleware(Range::class)->any(
-            '/_test/range', function () {
-            return view('test.test');
-        }
-        );
     }
 }

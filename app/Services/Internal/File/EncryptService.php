@@ -23,8 +23,10 @@ declare(strict_types=1);
 
 namespace FireflyIII\Services\Internal\File;
 
-use FireflyIII\Exceptions\FireflyException;
 use Crypt;
+use FireflyIII\Exceptions\FireflyException;
+use Illuminate\Contracts\Encryption\EncryptException;
+use Log;
 
 /**
  * Class EncryptService
@@ -43,7 +45,13 @@ class EncryptService
             throw new FireflyException(sprintf('File "%s" does not seem to exist.', $file));
         }
         $content = file_get_contents($file);
-        $content = Crypt::encrypt($content);
+        try {
+            $content = Crypt::encrypt($content);
+        } catch (EncryptException $e) {
+            $message = sprintf('Could not encrypt file: %s', $e->getMessage());
+            Log::error($message);
+            throw new FireflyException($message);
+        }
         $newName = sprintf('%s.upload', $key);
         $path    = storage_path('upload') . '/' . $newName;
 

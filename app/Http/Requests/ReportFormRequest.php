@@ -38,15 +38,19 @@ use Log;
 class ReportFormRequest extends Request
 {
     /**
+     * Verify the request.
+     *
      * @return bool
      */
-    public function authorize()
+    public function authorize(): bool
     {
         // Only allow logged in users
         return auth()->check();
     }
 
     /**
+     * Validate list of accounts.
+     *
      * @return Collection
      */
     public function getAccountList(): Collection
@@ -56,7 +60,7 @@ class ReportFormRequest extends Request
         $repository = app(AccountRepositoryInterface::class);
         $set        = $this->get('accounts');
         $collection = new Collection;
-        if (is_array($set)) {
+        if (\is_array($set)) {
             foreach ($set as $accountId) {
                 $account = $repository->findNull((int)$accountId);
                 if (null !== $account) {
@@ -69,6 +73,8 @@ class ReportFormRequest extends Request
     }
 
     /**
+     * Validate list of budgets.
+     *
      * @return Collection
      */
     public function getBudgetList(): Collection
@@ -77,7 +83,7 @@ class ReportFormRequest extends Request
         $repository = app(BudgetRepositoryInterface::class);
         $set        = $this->get('budget');
         $collection = new Collection;
-        if (is_array($set)) {
+        if (\is_array($set)) {
             foreach ($set as $budgetId) {
                 $budget = $repository->findNull((int)$budgetId);
                 if (null !== $budget) {
@@ -90,6 +96,8 @@ class ReportFormRequest extends Request
     }
 
     /**
+     * Validate list of categories.
+     *
      * @return Collection
      */
     public function getCategoryList(): Collection
@@ -98,7 +106,7 @@ class ReportFormRequest extends Request
         $repository = app(CategoryRepositoryInterface::class);
         $set        = $this->get('category');
         $collection = new Collection;
-        if (is_array($set)) {
+        if (\is_array($set)) {
             foreach ($set as $categoryId) {
                 $category = $repository->findNull((int)$categoryId);
                 if (null !== $category) {
@@ -111,6 +119,8 @@ class ReportFormRequest extends Request
     }
 
     /**
+     * Validate end date.
+     *
      * @return Carbon
      *
      * @throws FireflyException
@@ -120,13 +130,14 @@ class ReportFormRequest extends Request
         $date  = new Carbon;
         $range = $this->get('daterange');
         $parts = explode(' - ', (string)$range);
-        if (2 === count($parts)) {
+        if (2 === \count($parts)) {
             try {
                 $date = new Carbon($parts[1]);
                 // @codeCoverageIgnoreStart
             } catch (Exception $e) {
-                Log::error(sprintf('"%s" is not a valid date range.', $range));
-                throw new FireflyException(sprintf('"%s" is not a valid date range.', $range));
+                $error = sprintf('"%s" is not a valid date range: %s', $range, $e->getMessage());
+                Log::error($error);
+                throw new FireflyException($error);
                 // @codeCoverageIgnoreEnd
             }
 
@@ -136,6 +147,8 @@ class ReportFormRequest extends Request
     }
 
     /**
+     * Validate list of expense accounts.
+     *
      * @return Collection
      */
     public function getExpenseList(): Collection
@@ -145,7 +158,7 @@ class ReportFormRequest extends Request
         $repository = app(AccountRepositoryInterface::class);
         $set        = $this->get('exp_rev');
         $collection = new Collection;
-        if (is_array($set)) {
+        if (\is_array($set)) {
             foreach ($set as $accountId) {
                 $account = $repository->findNull((int)$accountId);
                 if (null !== $account) {
@@ -158,6 +171,8 @@ class ReportFormRequest extends Request
     }
 
     /**
+     * Validate start date.
+     *
      * @return Carbon
      *
      * @throws FireflyException
@@ -167,13 +182,14 @@ class ReportFormRequest extends Request
         $date  = new Carbon;
         $range = $this->get('daterange');
         $parts = explode(' - ', (string)$range);
-        if (2 === count($parts)) {
+        if (2 === \count($parts)) {
             try {
                 $date = new Carbon($parts[0]);
                 // @codeCoverageIgnoreStart
             } catch (Exception $e) {
-                Log::error(sprintf('"%s" is not a valid date range.', $range));
-                throw new FireflyException(sprintf('"%s" is not a valid date range.', $range));
+                $error = sprintf('"%s" is not a valid date range: %s', $range, $e->getMessage());
+                Log::error($error);
+                throw new FireflyException($error);
                 // @codeCoverageIgnoreEnd
             }
         }
@@ -182,6 +198,8 @@ class ReportFormRequest extends Request
     }
 
     /**
+     * Validate list of tags.
+     *
      * @return Collection
      */
     public function getTagList(): Collection
@@ -190,11 +208,17 @@ class ReportFormRequest extends Request
         $repository = app(TagRepositoryInterface::class);
         $set        = $this->get('tag');
         $collection = new Collection;
-        if (is_array($set)) {
+        if (\is_array($set)) {
             foreach ($set as $tagTag) {
                 $tag = $repository->findByTag($tagTag);
-                if (null !== $tag->id) {
+                if (null !== $tag) {
                     $collection->push($tag);
+                    continue;
+                }
+                $tag = $repository->findNull((int)$tagTag);
+                if (null !== $tag) {
+                    $collection->push($tag);
+                    continue;
                 }
             }
         }
@@ -203,6 +227,8 @@ class ReportFormRequest extends Request
     }
 
     /**
+     * Rules for this request.
+     *
      * @return array
      */
     public function rules(): array

@@ -22,12 +22,25 @@ declare(strict_types=1);
 
 namespace FireflyIII\Models;
 
+use Carbon\Carbon;
+use FireflyIII\User;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 /**
  * Class AvailableBudget.
+ *
+ * @property int                 $id
+ * @property Carbon              $created_at
+ * @property Carbon              $updated_at
+ * @property User                $user
+ * @property TransactionCurrency $transactionCurrency
+ * @property int                 $transaction_currency_id
+ * @property Carbon              $start_date
+ * @property Carbon              $end_date
+ * @property string              $amount
  */
 class AvailableBudget extends Model
 {
@@ -45,16 +58,39 @@ class AvailableBudget extends Model
             'start_date' => 'date',
             'end_date'   => 'date',
         ];
-    /** @var array */
+    /** @var array Fields that can be filled */
     protected $fillable = ['user_id', 'transaction_currency_id', 'amount', 'start_date', 'end_date'];
 
     /**
-     * @codeCoverageIgnore
-     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
+     * Route binder. Converts the key in the URL to the specified object (or throw 404).
+     *
+     * @param string $value
+     *
+     * @return AvailableBudget
+     * @throws NotFoundHttpException
      */
-    public function transactionCurrency()
+    public static function routeBinder(string $value): AvailableBudget
     {
-        return $this->belongsTo('FireflyIII\Models\TransactionCurrency');
+        if (auth()->check()) {
+            $availableBudgetId = (int)$value;
+            /** @var User $user */
+            $user = auth()->user();
+            /** @var AvailableBudget $availableBudget */
+            $availableBudget = $user->availableBudgets()->find($availableBudgetId);
+            if (null !== $availableBudget) {
+                return $availableBudget;
+            }
+        }
+        throw new NotFoundHttpException;
+    }
+
+    /**
+     * @codeCoverageIgnore
+     * @return BelongsTo
+     */
+    public function transactionCurrency(): BelongsTo
+    {
+        return $this->belongsTo(TransactionCurrency::class);
     }
 
     /**
@@ -63,6 +99,6 @@ class AvailableBudget extends Model
      */
     public function user(): BelongsTo
     {
-        return $this->belongsTo('FireflyIII\User');
+        return $this->belongsTo(User::class);
     }
 }

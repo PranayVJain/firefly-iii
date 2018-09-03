@@ -38,17 +38,17 @@ class OperationsControllerTest extends TestCase
     /**
      *
      */
-    public function setUp()
+    public function setUp(): void
     {
         parent::setUp();
-        Log::debug(sprintf('Now in %s.', get_class($this)));
+        Log::debug(sprintf('Now in %s.', \get_class($this)));
     }
 
 
     /**
-     * @covers \FireflyIII\Http\Controllers\Report\OperationsController::expenses
+     * @covers \FireflyIII\Http\Controllers\Report\OperationsController
      */
-    public function testExpenses()
+    public function testExpenses(): void
     {
         $return = [
             1 => [
@@ -68,9 +68,9 @@ class OperationsControllerTest extends TestCase
     }
 
     /**
-     * @covers \FireflyIII\Http\Controllers\Report\OperationsController::income
+     * @covers \FireflyIII\Http\Controllers\Report\OperationsController
      */
-    public function testIncome()
+    public function testIncome(): void
     {
         $tasker = $this->mock(AccountTaskerInterface::class);
         $tasker->shouldReceive('getIncomeReport')->andReturn([]);
@@ -81,9 +81,9 @@ class OperationsControllerTest extends TestCase
     }
 
     /**
-     * @covers \FireflyIII\Http\Controllers\Report\OperationsController::operations
+     * @covers \FireflyIII\Http\Controllers\Report\OperationsController
      */
-    public function testOperations()
+    public function testOperations(): void
     {
         $return = [
             1 => [

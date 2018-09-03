@@ -24,7 +24,7 @@ namespace Tests\Feature\Controllers\Chart;
 
 use FireflyIII\Generator\Chart\Basic\GeneratorInterface;
 use FireflyIII\Helpers\Chart\MetaPieChartInterface;
-use FireflyIII\Helpers\Collector\JournalCollectorInterface;
+use FireflyIII\Helpers\Collector\TransactionCollectorInterface;
 use FireflyIII\Helpers\Filter\NegativeAmountFilter;
 use FireflyIII\Helpers\Filter\OpposingAccountFilter;
 use FireflyIII\Helpers\Filter\PositiveAmountFilter;
@@ -40,27 +40,22 @@ use Tests\TestCase;
 
 /**
  * Class TagReportControllerTest
- *
- * @SuppressWarnings(PHPMD.TooManyPublicMethods)
- * @SuppressWarnings(PHPMD.ExcessiveMethodLength)
- * @SuppressWarnings(PHPMD.CouplingBetweenObjects)
  */
 class TagReportControllerTest extends TestCase
 {
     /**
      *
      */
-    public function setUp()
+    public function setUp(): void
     {
         parent::setUp();
-        Log::debug(sprintf('Now in %s.', get_class($this)));
+        Log::debug(sprintf('Now in %s.', \get_class($this)));
     }
 
     /**
-     * @covers \FireflyIII\Http\Controllers\Chart\TagReportController::accountExpense
-     * @covers \FireflyIII\Http\Controllers\Chart\TagReportController::__construct
+     * @covers \FireflyIII\Http\Controllers\Chart\TagReportController
      */
-    public function testAccountExpense()
+    public function testAccountExpense(): void
     {
         $generator    = $this->mock(GeneratorInterface::class);
         $pieChart     = $this->mock(MetaPieChartInterface::class);
@@ -86,9 +81,9 @@ class TagReportControllerTest extends TestCase
     }
 
     /**
-     * @covers \FireflyIII\Http\Controllers\Chart\TagReportController::accountIncome
+     * @covers \FireflyIII\Http\Controllers\Chart\TagReportController
      */
-    public function testAccountIncome()
+    public function testAccountIncome(): void
     {
         $generator    = $this->mock(GeneratorInterface::class);
         $pieChart     = $this->mock(MetaPieChartInterface::class);
@@ -113,9 +108,9 @@ class TagReportControllerTest extends TestCase
     }
 
     /**
-     * @covers \FireflyIII\Http\Controllers\Chart\TagReportController::budgetExpense()
+     * @covers \FireflyIII\Http\Controllers\Chart\TagReportController
      */
-    public function testBudgetExpense()
+    public function testBudgetExpense(): void
     {
         $generator    = $this->mock(GeneratorInterface::class);
         $pieChart     = $this->mock(MetaPieChartInterface::class);
@@ -139,9 +134,9 @@ class TagReportControllerTest extends TestCase
     }
 
     /**
-     * @covers \FireflyIII\Http\Controllers\Chart\TagReportController::categoryExpense()
+     * @covers \FireflyIII\Http\Controllers\Chart\TagReportController
      */
-    public function testCategoryExpense()
+    public function testCategoryExpense(): void
     {
         $generator    = $this->mock(GeneratorInterface::class);
         $pieChart     = $this->mock(MetaPieChartInterface::class);
@@ -165,15 +160,12 @@ class TagReportControllerTest extends TestCase
     }
 
     /**
-     * @covers \FireflyIII\Http\Controllers\Chart\TagReportController::mainChart()
-     * @covers \FireflyIII\Http\Controllers\Chart\TagReportController::getExpenses
-     * @covers \FireflyIII\Http\Controllers\Chart\TagReportController::getIncome
-     * @covers \FireflyIII\Http\Controllers\Chart\TagReportController::groupByTag
+     * @covers \FireflyIII\Http\Controllers\Chart\TagReportController
      */
-    public function testMainChart()
+    public function testMainChart(): void
     {
         $generator    = $this->mock(GeneratorInterface::class);
-        $collector    = $this->mock(JournalCollectorInterface::class);
+        $collector    = $this->mock(TransactionCollectorInterface::class);
         $tagRepos     = $this->mock(TagRepositoryInterface::class);
         $accountRepos = $this->mock(AccountRepositoryInterface::class);
         $tag          = $this->user()->tags()->first();
@@ -198,7 +190,7 @@ class TagReportControllerTest extends TestCase
         $collector->shouldReceive('addFilter')->withArgs([NegativeAmountFilter::class])->andReturnSelf();
         $collector->shouldReceive('setTags')->andReturnSelf();
         $collector->shouldReceive('withOpposingAccount')->andReturnSelf();
-        $collector->shouldReceive('getJournals')->andReturn($set);
+        $collector->shouldReceive('getTransactions')->andReturn($set);
         $generator->shouldReceive('multiSet')->andReturn([])->once();
 
         $this->be($this->user());
@@ -207,9 +199,9 @@ class TagReportControllerTest extends TestCase
     }
 
     /**
-     * @covers \FireflyIII\Http\Controllers\Chart\TagReportController::tagExpense()
+     * @covers \FireflyIII\Http\Controllers\Chart\TagReportController
      */
-    public function testTagExpense()
+    public function testTagExpense(): void
     {
         $generator    = $this->mock(GeneratorInterface::class);
         $pieChart     = $this->mock(MetaPieChartInterface::class);
@@ -233,9 +225,9 @@ class TagReportControllerTest extends TestCase
     }
 
     /**
-     * @covers \FireflyIII\Http\Controllers\Chart\TagReportController::tagIncome
+     * @covers \FireflyIII\Http\Controllers\Chart\TagReportController
      */
-    public function testTagIncome()
+    public function testTagIncome(): void
     {
         $generator    = $this->mock(GeneratorInterface::class);
         $pieChart     = $this->mock(MetaPieChartInterface::class);

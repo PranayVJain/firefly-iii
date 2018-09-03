@@ -1,5 +1,5 @@
 <?php
-declare(strict_types=1);
+
 /**
  * BillFactory.php
  * Copyright (c) 2018 thegrumpydictator@gmail.com
@@ -20,10 +20,12 @@ declare(strict_types=1);
  * along with Firefly III. If not, see <http://www.gnu.org/licenses/>.
  */
 
+declare(strict_types=1);
 
 namespace FireflyIII\Factory;
 
 use FireflyIII\Models\Bill;
+use FireflyIII\Models\TransactionCurrency;
 use FireflyIII\Services\Internal\Support\BillServiceTrait;
 use FireflyIII\User;
 use Illuminate\Support\Collection;
@@ -45,23 +47,24 @@ class BillFactory
      */
     public function create(array $data): ?Bill
     {
-        $matchArray = explode(',', $data['match']);
-        $matchArray = array_unique($matchArray);
-        $match      = implode(',', $matchArray);
-
+        /** @var TransactionCurrencyFactory $factory */
+        $factory = app(TransactionCurrencyFactory::class);
+        /** @var TransactionCurrency $currency */
+        $currency = $factory->find((int)$data['currency_id'], (string)$data['currency_code']);
         /** @var Bill $bill */
         $bill = Bill::create(
             [
-                'name'        => $data['name'],
-                'match'       => $match,
-                'amount_min'  => $data['amount_min'],
-                'user_id'     => $this->user->id,
-                'amount_max'  => $data['amount_max'],
-                'date'        => $data['date'],
-                'repeat_freq' => $data['repeat_freq'],
-                'skip'        => $data['skip'],
-                'automatch'   => $data['automatch'],
-                'active'      => $data['active'],
+                'name'                    => $data['name'],
+                'match'                   => 'MIGRATED_TO_RULES',
+                'amount_min'              => $data['amount_min'],
+                'user_id'                 => $this->user->id,
+                'transaction_currency_id' => $currency->id,
+                'amount_max'              => $data['amount_max'],
+                'date'                    => $data['date'],
+                'repeat_freq'             => $data['repeat_freq'],
+                'skip'                    => $data['skip'],
+                'automatch'               => $data['automatch'] ?? true,
+                'active'                  => $data['active'] ?? true,
             ]
         );
 
@@ -83,25 +86,19 @@ class BillFactory
     {
         $billId   = (int)$billId;
         $billName = (string)$billName;
-
+        $bill     = null;
         // first find by ID:
         if ($billId > 0) {
             /** @var Bill $bill */
             $bill = $this->user->bills()->find($billId);
-            if (null !== $bill) {
-                return $bill;
-            }
         }
 
         // then find by name:
-        if (strlen($billName) > 0) {
+        if (null === $bill && \strlen($billName) > 0) {
             $bill = $this->findByName($billName);
-            if (null !== $bill) {
-                return $bill;
-            }
         }
 
-        return null;
+        return $bill;
 
     }
 
@@ -114,22 +111,24 @@ class BillFactory
     {
         /** @var Collection $collection */
         $collection = $this->user->bills()->get();
+        $return     = null;
         /** @var Bill $bill */
         foreach ($collection as $bill) {
             Log::debug(sprintf('"%s" vs. "%s"', $bill->name, $name));
             if ($bill->name === $name) {
-                return $bill;
+                $return = $bill;
+                break;
             }
         }
-        Log::debug(sprintf('Bill::Find by name returns NULL based on "%s"', $name));
+        Log::debug(sprintf('Bill::find("%s") by name returns null? %s', $name, var_export($return, true)));
 
-        return null;
+        return $return;
     }
 
     /**
      * @param User $user
      */
-    public function setUser(User $user)
+    public function setUser(User $user): void
     {
         $this->user = $user;
     }

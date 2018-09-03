@@ -32,19 +32,9 @@ use Tests\TestCase;
 class RabobankDebitCreditTest extends TestCase
 {
     /**
-     * @covers \FireflyIII\Import\Converter\RabobankDebitCredit::convert()
+     * @covers \FireflyIII\Import\Converter\RabobankDebitCredit
      */
-    public function testConvertAf()
-    {
-        $converter = new RabobankDebitCredit;
-        $result    = $converter->convert('D');
-        $this->assertEquals(-1, $result);
-    }
-
-    /**
-     * @covers \FireflyIII\Import\Converter\RabobankDebitCredit::convert()
-     */
-    public function testConvertAnything()
+    public function testConvertAnything(): void
     {
         $converter = new RabobankDebitCredit;
         $result    = $converter->convert('9083jkdkj');
@@ -52,12 +42,42 @@ class RabobankDebitCreditTest extends TestCase
     }
 
     /**
-     * @covers \FireflyIII\Import\Converter\RabobankDebitCredit::convert()
+     * @covers \FireflyIII\Import\Converter\RabobankDebitCredit
      */
-    public function testConvertBij()
+    public function testConvertCredit(): void
     {
         $converter = new RabobankDebitCredit;
         $result    = $converter->convert('C');
         $this->assertEquals(1, $result);
+    }
+
+    /**
+     * @covers \FireflyIII\Import\Converter\RabobankDebitCredit
+     */
+    public function testConvertCreditOld(): void
+    {
+        $converter = new RabobankDebitCredit;
+        $result    = $converter->convert('B');
+        $this->assertEquals(1, $result);
+    }
+
+    /**
+     * @covers \FireflyIII\Import\Converter\RabobankDebitCredit
+     */
+    public function testConvertDebit(): void
+    {
+        $converter = new RabobankDebitCredit;
+        $result    = $converter->convert('D');
+        $this->assertEquals(-1, $result);
+    }
+
+    /**
+     * @covers \FireflyIII\Import\Converter\RabobankDebitCredit
+     */
+    public function testConvertDebitOld(): void
+    {
+        $converter = new RabobankDebitCredit;
+        $result    = $converter->convert('A');
+        $this->assertEquals(-1, $result);
     }
 }

@@ -23,10 +23,11 @@ declare(strict_types=1);
 namespace FireflyIII\Repositories\Journal;
 
 use Carbon\Carbon;
+use FireflyIII\Exceptions\FireflyException;
 use FireflyIII\Models\Account;
-use FireflyIII\Models\Note;
 use FireflyIII\Models\Transaction;
 use FireflyIII\Models\TransactionJournal;
+use FireflyIII\Models\TransactionJournalMeta;
 use FireflyIII\Models\TransactionType;
 use FireflyIII\User;
 use Illuminate\Support\Collection;
@@ -37,7 +38,7 @@ use Illuminate\Support\MessageBag;
  */
 interface JournalRepositoryInterface
 {
-
+    /** @noinspection MoreThanThreeArgumentsInspection */
     /**
      * @param TransactionJournal $journal
      * @param TransactionType    $type
@@ -65,13 +66,22 @@ interface JournalRepositoryInterface
     public function destroy(TransactionJournal $journal): bool;
 
     /**
+     * Find a journal by its hash.
+     *
+     * @param string $hash
+     *
+     * @return TransactionJournalMeta|null
+     */
+    public function findByHash(string $hash): ?TransactionJournalMeta;
+
+    /**
      * Find a specific journal.
      *
      * @param int $journalId
      *
-     * @return TransactionJournal
+     * @return TransactionJournal|null
      */
-    public function find(int $journalId): TransactionJournal;
+    public function findNull(int $journalId): ?TransactionJournal;
 
     /**
      * @param Transaction $transaction
@@ -86,14 +96,6 @@ interface JournalRepositoryInterface
      * @return Transaction|null
      */
     public function findTransaction(int $transactionid): ?Transaction;
-
-    /**
-     * Get users very first transaction journal.
-     *
-     * @deprecated
-     * @return TransactionJournal
-     */
-    public function first(): TransactionJournal;
 
     /**
      * Get users very first transaction journal.
@@ -195,13 +197,6 @@ interface JournalRepositoryInterface
     public function getMetaField(TransactionJournal $journal, string $field): ?string;
 
     /**
-     * @param TransactionJournal $journal
-     *
-     * @return Note|null
-     */
-    public function getNote(TransactionJournal $journal): ?Note;
-
-    /**
      * Return text of a note attached to journal, or NULL
      *
      * @param TransactionJournal $journal
@@ -282,15 +277,6 @@ interface JournalRepositoryInterface
     public function setMetaDate(TransactionJournal $journal, string $name, Carbon $date): void;
 
     /**
-     * Set meta field for journal that contains string.
-     *
-     * @param TransactionJournal $journal
-     * @param string             $name
-     * @param string             $value
-     */
-    public function setMetaString(TransactionJournal $journal, string $name, string $value): void;
-
-    /**
      * @param TransactionJournal $journal
      * @param int                $order
      *
@@ -306,6 +292,7 @@ interface JournalRepositoryInterface
     /**
      * @param array $data
      *
+     * @throws FireflyException
      * @return TransactionJournal
      */
     public function store(array $data): TransactionJournal;

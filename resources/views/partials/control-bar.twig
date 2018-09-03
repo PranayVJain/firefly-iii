@@ -57,6 +57,15 @@
                         </div>
                     </a>
                 </li>
+                <li>
+                    <a href="{{ route('accounts.create', 'liabilities') }}">
+                        <i class="menu-icon fa fa-ticket bg-maroon"></i>
+
+                        <div class="menu-info">
+                            <h4 class="control-sidebar-subheading">{{ 'new_liabilities_account'|_ }}</h4>
+                        </div>
+                    </a>
+                </li>
 
                 <li>
                     <a href="{{ route('budgets.create') }}">
@@ -93,6 +102,24 @@
 
                         <div class="menu-info">
                             <h4 class="control-sidebar-subheading">{{ 'new_bill'|_ }}</h4>
+                        </div>
+                    </a>
+                </li>
+                <li>
+                    <a href="{{ route('rules.create') }}">
+                        <i class="menu-icon fa fa-random bg-red"></i>
+
+                        <div class="menu-info">
+                            <h4 class="control-sidebar-subheading">{{ 'new_rule'|_ }}</h4>
+                        </div>
+                    </a>
+                </li>
+                <li>
+                    <a href="{{ route('recurring.create') }}">
+                        <i class="menu-icon fa fa-paint-brush bg-teal"></i>
+
+                        <div class="menu-info">
+                            <h4 class="control-sidebar-subheading">{{ 'new_recurring_transaction'|_ }}</h4>
                         </div>
                     </a>
                 </li>

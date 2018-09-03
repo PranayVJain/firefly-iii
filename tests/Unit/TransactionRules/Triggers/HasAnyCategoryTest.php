@@ -33,9 +33,9 @@ use Tests\TestCase;
 class HasAnyCategoryTest extends TestCase
 {
     /**
-     * @covers \FireflyIII\TransactionRules\Triggers\HasAnyCategory::triggered
+     * @covers \FireflyIII\TransactionRules\Triggers\HasAnyCategory
      */
-    public function testTriggered()
+    public function testTriggered(): void
     {
         $journal  = TransactionJournal::inRandomOrder()->whereNull('deleted_at')->first();
         $category = $journal->user->categories()->first();
@@ -49,16 +49,16 @@ class HasAnyCategoryTest extends TestCase
     }
 
     /**
-     * @covers \FireflyIII\TransactionRules\Triggers\HasAnyCategory::triggered
+     * @covers \FireflyIII\TransactionRules\Triggers\HasAnyCategory
      */
-    public function testTriggeredNot()
+    public function testTriggeredNot(): void
     {
         $journal = TransactionJournal::inRandomOrder()->whereNull('deleted_at')->first();
         $journal->categories()->detach();
 
         // also detach transactions:
         /** @var Transaction $transaction */
-        foreach($journal->transactions as $transaction) {
+        foreach ($journal->transactions as $transaction) {
             $transaction->categories()->detach();
         }
 
@@ -69,30 +69,32 @@ class HasAnyCategoryTest extends TestCase
     }
 
     /**
-     * @covers \FireflyIII\TransactionRules\Triggers\HasAnyCategory::triggered
+     * @covers \FireflyIII\TransactionRules\Triggers\HasAnyCategory
      */
-    public function testTriggeredTransactions()
+    public function testTriggeredTransactions(): void
     {
-        $journal  = TransactionJournal::inRandomOrder()->whereNull('deleted_at')->first();
-        $category = $journal->user->categories()->first();
-        $journal->categories()->detach();
-        $this->assertEquals(0, $journal->categories()->count());
+        $withdrawal = $this->getRandomWithdrawal();
+
+        $category = $withdrawal->user->categories()->first();
+        $withdrawal->categories()->detach();
+        $this->assertEquals(0, $withdrawal->categories()->count());
 
         // append to transaction, not to journal.
-        foreach ($journal->transactions()->get() as $index => $transaction) {
+        foreach ($withdrawal->transactions()->get() as $index => $transaction) {
             $transaction->categories()->sync([$category->id]);
+            $this->assertEquals(1, $transaction->categories()->count());
         }
-        $this->assertEquals(0, $journal->categories()->count());
+        $this->assertEquals(0, $withdrawal->categories()->count());
 
         $trigger = HasAnyCategory::makeFromStrings('', false);
-        $result  = $trigger->triggered($journal);
+        $result  = $trigger->triggered($withdrawal);
         $this->assertTrue($result);
     }
 
     /**
-     * @covers \FireflyIII\TransactionRules\Triggers\HasAnyCategory::willMatchEverything
+     * @covers \FireflyIII\TransactionRules\Triggers\HasAnyCategory
      */
-    public function testWillMatchEverything()
+    public function testWillMatchEverything(): void
     {
         $value  = '';
         $result = HasAnyCategory::willMatchEverything($value);

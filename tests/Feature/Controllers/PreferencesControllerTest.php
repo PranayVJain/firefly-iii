@@ -43,23 +43,23 @@ class PreferencesControllerTest extends TestCase
     /**
      *
      */
-    public function setUp()
+    public function setUp(): void
     {
         parent::setUp();
-        Log::debug(sprintf('Now in %s.', get_class($this)));
+        Log::debug(sprintf('Now in %s.', \get_class($this)));
     }
 
 
     /**
-     * @covers \FireflyIII\Http\Controllers\PreferencesController::index
-     * @covers \FireflyIII\Http\Controllers\PreferencesController::__construct
+     * @covers \FireflyIII\Http\Controllers\PreferencesController
+     * @covers \FireflyIII\Http\Controllers\PreferencesController
      */
-    public function testIndex()
+    public function testIndex(): void
     {
         // mock stuff
         $accountRepos = $this->mock(AccountRepositoryInterface::class);
         $journalRepos = $this->mock(JournalRepositoryInterface::class);
-        $journalRepos->shouldReceive('first')->once()->andReturn(new TransactionJournal);
+        $journalRepos->shouldReceive('firstNull')->once()->andReturn(new TransactionJournal);
         $accountRepos->shouldReceive('getAccountsByType')->withArgs([[AccountType::DEFAULT, AccountType::ASSET]])->andReturn(new Collection)->once();
 
         $this->be($this->user());
@@ -69,14 +69,14 @@ class PreferencesControllerTest extends TestCase
     }
 
     /**
-     * @covers \FireflyIII\Http\Controllers\PreferencesController::postIndex
+     * @covers \FireflyIII\Http\Controllers\PreferencesController
      */
-    public function testPostIndex()
+    public function testPostIndex(): void
     {
         // mock stuff
         $journalRepos = $this->mock(JournalRepositoryInterface::class);
         $userRepos    = $this->mock(UserRepositoryInterface::class);
-        $journalRepos->shouldReceive('first')->once()->andReturn(new TransactionJournal);
+        $journalRepos->shouldReceive('firstNull')->once()->andReturn(new TransactionJournal);
         $userRepos->shouldReceive('hasRole')->andReturn(false);
 
         $data = [

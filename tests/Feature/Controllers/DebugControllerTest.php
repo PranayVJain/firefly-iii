@@ -22,6 +22,8 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Controllers;
 
+use FireflyIII\Models\TransactionJournal;
+use FireflyIII\Repositories\Journal\JournalRepositoryInterface;
 use Log;
 use Tests\TestCase;
 
@@ -37,23 +39,76 @@ class DebugControllerTest extends TestCase
     /**
      *
      */
-    public function setUp()
+    public function setUp(): void
     {
         parent::setUp();
-        Log::debug(sprintf('Now in %s.', get_class($this)));
+        Log::debug(sprintf('Now in %s.', \get_class($this)));
     }
 
     /**
-     * @covers \FireflyIII\Http\Controllers\DebugController::index
-     * @covers \FireflyIII\Http\Controllers\DebugController::__construct
-     * @covers \FireflyIII\Http\Controllers\DebugController::errorReporting
-     * @covers \FireflyIII\Http\Controllers\DebugController::collectPackages
+     * @covers \FireflyIII\Http\Controllers\DebugController
      */
-    public function testIndex()
+    public function testDisplayError(): void
+    {
+        // mock stuff
+        $journalRepos = $this->mock(JournalRepositoryInterface::class);
+        $journalRepos->shouldReceive('firstNull')->andReturn(new TransactionJournal);
+
+        $this->be($this->user());
+        $response = $this->get(route('error'));
+        $response->assertStatus(500);
+    }
+
+    /**
+     * @covers \FireflyIII\Http\Controllers\DebugController
+     */
+    public function testFlush(): void
+    {
+        // mock stuff
+        $journalRepos = $this->mock(JournalRepositoryInterface::class);
+        $journalRepos->shouldReceive('firstNull')->andReturn(new TransactionJournal);
+
+        $this->be($this->user());
+        $response = $this->get(route('flush'));
+        $response->assertStatus(302);
+    }
+
+    /**
+     * @covers \FireflyIII\Http\Controllers\DebugController
+     */
+    public function testIndex(): void
     {
         $this->be($this->user());
         $response = $this->get(route('debug'));
         $response->assertStatus(200);
+    }
+
+    /**
+     * @covers \FireflyIII\Http\Controllers\DebugController
+     */
+    public function testRoutes(): void
+    {
+        $this->be($this->user());
+        $response = $this->get(route('routes'));
+        $response->assertStatus(200);
+    }
+
+    /**
+     * @covers \FireflyIII\Http\Controllers\DebugController
+     */
+    public function testTestFlash(): void
+    {
+        // mock stuff
+        $journalRepos = $this->mock(JournalRepositoryInterface::class);
+        $journalRepos->shouldReceive('firstNull')->once()->andReturn(new TransactionJournal);
+
+        $this->be($this->user());
+        $response = $this->get(route('test-flash'));
+        $response->assertStatus(302);
+        $response->assertSessionHas('success');
+        $response->assertSessionHas('info');
+        $response->assertSessionHas('warning');
+        $response->assertSessionHas('error');
     }
 
 }

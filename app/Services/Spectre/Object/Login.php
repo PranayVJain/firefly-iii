@@ -28,6 +28,10 @@ use Carbon\Carbon;
 
 /**
  * Class Login
+ *
+ * @codeCoverageIgnore
+ * @SuppressWarnings(PHPMD.ShortVariable)
+ * @SuppressWarnings(PHPMD.TooManyFields)
  */
 class Login extends SpectreObject
 {
@@ -83,7 +87,7 @@ class Login extends SpectreObject
         $this->customerId              = $data['customer_id'];
         $this->dailyRefresh            = $data['daily_refresh'];
         $this->holderInfo              = new Holder($data['holder_info']);
-        $this->id                      = $data['id'];
+        $this->id                      = (int)$data['id'];
         $this->lastAttempt             = new Attempt($data['last_attempt']);
         $this->lastSuccessAt           = new Carbon($data['last_success_at']);
         $this->nextRefreshPossibleAt   = new Carbon($data['next_refresh_possible_at']);
@@ -94,6 +98,14 @@ class Login extends SpectreObject
         $this->status                  = $data['status'];
         $this->storeCredentials        = $data['store_credentials'];
 
+    }
+
+    /**
+     * @return string
+     */
+    public function getCountryCode(): string
+    {
+        return $this->countryCode;
     }
 
     /**
@@ -113,6 +125,38 @@ class Login extends SpectreObject
     }
 
     /**
+     * @return Carbon
+     */
+    public function getLastSuccessAt(): Carbon
+    {
+        return $this->lastSuccessAt;
+    }
+
+    /**
+     * @return string
+     */
+    public function getProviderName(): string
+    {
+        return $this->providerName;
+    }
+
+    /**
+     * @return string
+     */
+    public function getStatus(): string
+    {
+        return $this->status;
+    }
+
+    /**
+     * @return Carbon
+     */
+    public function getUpdatedAt(): Carbon
+    {
+        return $this->updatedAt;
+    }
+
+    /**
      * @return array
      */
     public function toArray(): array
@@ -129,7 +173,7 @@ class Login extends SpectreObject
             'id'                        => $this->id,
             'last_attempt'              => $this->lastAttempt->toArray(),
             'last_success_at'           => $this->lastSuccessAt->toIso8601String(),
-            'next_refresh_possible_at'  => $this->nextRefreshPossibleAt,
+            'next_refresh_possible_at'  => $this->nextRefreshPossibleAt->toIso8601String(),
             'provider_code'             => $this->providerCode,
             'provider_id'               => $this->providerId,
             'provider_name'             => $this->providerName,

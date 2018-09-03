@@ -52,7 +52,7 @@ class TriggerFactory
      *
      * @throws FireflyException
      */
-    public static function getTrigger(RuleTrigger $trigger)
+    public static function getTrigger(RuleTrigger $trigger): AbstractTrigger
     {
         $triggerType = $trigger->trigger_type;
 
@@ -62,7 +62,7 @@ class TriggerFactory
         $obj->stopProcessing = $trigger->stop_processing;
 
         Log::debug(sprintf('self::getTriggerClass("%s") = "%s"', $triggerType, $class));
-        Log::debug(sprintf('%s::makeFromTriggerValue(%s) = object of class "%s"', $class, $trigger->trigger_value, get_class($obj)));
+        Log::debug(sprintf('%s::makeFromTriggerValue(%s) = object of class "%s"', $class, $trigger->trigger_value, \get_class($obj)));
 
         return $obj;
     }
@@ -84,12 +84,12 @@ class TriggerFactory
      *
      * @throws FireflyException
      */
-    public static function makeTriggerFromStrings(string $triggerType, string $triggerValue, bool $stopProcessing)
+    public static function makeTriggerFromStrings(string $triggerType, string $triggerValue, bool $stopProcessing): AbstractTrigger
     {
         /** @var AbstractTrigger $class */
         $class = self::getTriggerClass($triggerType);
         $obj   = $class::makeFromStrings($triggerValue, $stopProcessing);
-        Log::debug('Created trigger from string', ['type' => $triggerType, 'value' => $triggerValue, 'stopProcessing' => $stopProcessing, 'class' => $class]);
+        Log::debug('Created trigger from string', ['type' => $triggerType, 'value' => $triggerValue, 'stop_processing' => $stopProcessing, 'class' => $class]);
 
         return $obj;
     }
@@ -101,7 +101,7 @@ class TriggerFactory
      */
     protected static function getTriggerTypes(): array
     {
-        if (0 === count(self::$triggerTypes)) {
+        if (0 === \count(self::$triggerTypes)) {
             self::$triggerTypes = Domain::getRuleTriggers();
         }
 

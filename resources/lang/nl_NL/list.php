@@ -1,9 +1,8 @@
 <?php
-declare(strict_types=1);
 
 /**
  * list.php
- * Copyright (c) 2017 thegrumpydictator@gmail.com
+ * Copyright (c) 2018 thegrumpydictator@gmail.com
  *
  * This file is part of Firefly III.
  *
@@ -21,6 +20,8 @@ declare(strict_types=1);
  * along with Firefly III. If not, see <http://www.gnu.org/licenses/>.
  */
 
+declare(strict_types=1);
+
 return [
     'buttons'                 => 'Knoppen',
     'icon'                    => 'Icoon',
@@ -33,6 +34,7 @@ return [
     'name'                    => 'Naam',
     'role'                    => 'Rol',
     'currentBalance'          => 'Huidig saldo',
+    'linked_to_rules'         => 'Relevante regels',
     'active'                  => 'Actief?',
     'lastActivity'            => 'Laatste activiteit',
     'balanceDiff'             => 'Saldoverschil',
@@ -102,6 +104,7 @@ return [
     'sum_transfers'           => 'Som van overschrijvingen',
     'reconcile'               => 'Afstemmen',
     'account_on_spectre'      => 'Rekening (Spectre)',
+    'account_on_ynab'         => 'Rekening (YNAB)',
     'do_import'               => 'Importeer van deze rekening',
     'sepa-ct-id'              => 'SEPA end-to-end identificatie',
     'sepa-ct-op'              => 'SEPA identificatie tegenpartij',
@@ -110,5 +113,24 @@ return [
     'sepa-cc'                 => 'SEPA vrijwaringscode',
     'sepa-ep'                 => 'SEPA transactiedoeleinde',
     'sepa-ci'                 => 'SEPA crediteuridentificatie',
+    'sepa-batch-id'           => 'SEPA batchnummer',
+    'external_id'             => 'Externe ID',
     'account_at_bunq'         => 'Bunq-account',
+    'file_name'               => 'Bestandsnaam',
+    'file_size'               => 'Bestandsgrootte',
+    'file_type'               => 'Bestandstype',
+    'attached_to'             => 'Bijlage van',
+    'file_exists'             => 'Bestand bestaat',
+    'spectre_bank'            => 'Bank',
+    'spectre_last_use'        => 'Laatst ingelogd',
+    'spectre_status'          => 'Status',
+    'bunq_payment_id'         => 'bunq betalings-ID',
+    'repetitions'             => 'Herhalingen',
+    'title'                   => 'Titel',
+    'transaction_s'           => 'Transactie(s)',
+    'field'                   => 'Veld',
+    'value'                   => 'Waarde',
+    'interest'                => 'Rente',
+    'interest_period'         => 'renteperiode',
+    'liability_type'          => 'Type passiva',
 ];

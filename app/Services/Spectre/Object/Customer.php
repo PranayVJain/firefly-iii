@@ -24,6 +24,9 @@ namespace FireflyIII\Services\Spectre\Object;
 
 /**
  * Class Customer
+ *
+ * @codeCoverageIgnore
+ * @SuppressWarnings(PHPMD.ShortVariable)
  */
 class Customer extends SpectreObject
 {

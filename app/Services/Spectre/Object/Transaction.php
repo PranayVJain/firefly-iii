@@ -27,6 +27,10 @@ use Carbon\Carbon;
 
 /**
  * Class Transaction
+ *
+ * @codeCoverageIgnore
+ *
+ * @SuppressWarnings(PHPMD.ShortVariable)
  */
 class Transaction extends SpectreObject
 {
@@ -64,7 +68,7 @@ class Transaction extends SpectreObject
      */
     public function __construct(array $data)
     {
-        $this->id           = $data['id'];
+        $this->id           = (int)$data['id'];
         $this->mode         = $data['mode'];
         $this->status       = $data['status'];
         $this->madeOn       = new Carbon($data['made_on']);
@@ -112,9 +116,9 @@ class Transaction extends SpectreObject
     }
 
     /**
-     * @return TransactionExtra
+     * @return TransactionExtra|null
      */
-    public function getExtra(): TransactionExtra
+    public function getExtra(): ?TransactionExtra
     {
         return $this->extra;
     }
@@ -165,6 +169,41 @@ class Transaction extends SpectreObject
     public function getMode(): string
     {
         return $this->mode;
+    }
+
+    /**
+     * Get opposing account data.
+     *
+     * @return array
+     * @SuppressWarnings(PHPMD.CyclomaticComplexity)
+     */
+    public function getOpposingAccountData(): array
+    {
+        $data  = [
+            'name'   => null,
+            'iban'   => null,
+            'number' => null,
+            'bic'    => null,
+        ];
+        $extra = $this->getExtra();
+        if (null !== $extra) {
+            $arr = $extra->toArray();
+            foreach ($arr as $key => $value) {
+                switch ($key) {
+                    case 'account_number':
+                        $data['number'] = $value;
+                        $data['name']   = $data['name'] ?? (string)trans('import.spectre_account_with_number', ['number' => $value]);
+                        break;
+                    case 'payee':
+                        $data['name'] = $value;
+                        break;
+                    default:
+                        break;
+                }
+            }
+        }
+
+        return $data;
     }
 
     /**

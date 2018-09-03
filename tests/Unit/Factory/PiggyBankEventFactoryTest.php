@@ -29,6 +29,7 @@ use FireflyIII\Models\PiggyBankEvent;
 use FireflyIII\Models\PiggyBankRepetition;
 use FireflyIII\Models\TransactionJournal;
 use FireflyIII\Repositories\PiggyBank\PiggyBankRepositoryInterface;
+use Log;
 use Tests\TestCase;
 
 /**
@@ -36,10 +37,20 @@ use Tests\TestCase;
  */
 class PiggyBankEventFactoryTest extends TestCase
 {
+
+    /**
+     *
+     */
+    public function setUp(): void
+    {
+        parent::setUp();
+        Log::debug(sprintf('Now in %s.', \get_class($this)));
+    }
+
     /**
      * @covers \FireflyIII\Factory\PiggyBankEventFactory
      */
-    public function testCreateAmountZero()
+    public function testCreateAmountZero(): void
     {
         /** @var TransactionJournal $transfer */
         $transfer   = $this->user()->transactionJournals()->where('transaction_type_id', 3)->first();
@@ -60,7 +71,7 @@ class PiggyBankEventFactoryTest extends TestCase
     /**
      * @covers \FireflyIII\Factory\PiggyBankEventFactory
      */
-    public function testCreateNoPiggy()
+    public function testCreateNoPiggy(): void
     {
         /** @var TransactionJournal $transfer */
         $transfer = $this->user()->transactionJournals()->where('transaction_type_id', 3)->first();
@@ -72,21 +83,22 @@ class PiggyBankEventFactoryTest extends TestCase
     }
 
     /**
+     * Test for withdrawal where piggy has no repetition.
+     *
      * @covers \FireflyIII\Factory\PiggyBankEventFactory
      */
-    public function testCreateNoRep()
+    public function testCreateNoRep(): void
     {
         /** @var TransactionJournal $transfer */
-        $transfer   = $this->user()->transactionJournals()->where('transaction_type_id', 3)->first();
-        $piggy      = $this->user()->piggyBanks()->first();
-        $repetition = new PiggyBankRepetition;
-        $repos      = $this->mock(PiggyBankRepositoryInterface::class);
+        $transfer = $this->user()->transactionJournals()->where('transaction_type_id', 3)->first();
+        $piggy    = $this->user()->piggyBanks()->first();
+        $repos    = $this->mock(PiggyBankRepositoryInterface::class);
         /** @var PiggyBankEventFactory $factory */
         $factory = app(PiggyBankEventFactory::class);
 
         // mock:
         $repos->shouldReceive('setUser');
-        $repos->shouldReceive('getRepetition')->andReturn($repetition);
+        $repos->shouldReceive('getRepetition')->andReturn(null);
         $repos->shouldReceive('getExactAmount')->andReturn('0');
 
         $this->assertNull($factory->create($transfer, $piggy));
@@ -95,7 +107,7 @@ class PiggyBankEventFactoryTest extends TestCase
     /**
      * @covers \FireflyIII\Factory\PiggyBankEventFactory
      */
-    public function testCreateNotTransfer()
+    public function testCreateNotTransfer(): void
     {
         /** @var TransactionJournal $deposit */
         $deposit = $this->user()->transactionJournals()->where('transaction_type_id', 2)->first();
@@ -109,7 +121,7 @@ class PiggyBankEventFactoryTest extends TestCase
     /**
      * @covers \FireflyIII\Factory\PiggyBankEventFactory
      */
-    public function testCreateSuccess()
+    public function testCreateSuccess(): void
     {
         /** @var TransactionJournal $transfer */
         $transfer   = $this->user()->transactionJournals()->where('transaction_type_id', 3)->first();

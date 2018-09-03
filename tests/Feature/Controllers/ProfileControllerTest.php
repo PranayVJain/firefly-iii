@@ -30,6 +30,7 @@ use FireflyIII\User;
 use Google2FA;
 use Illuminate\Support\Collection;
 use Log;
+use Mockery;
 use Preferences;
 use Tests\TestCase;
 
@@ -45,16 +46,16 @@ class ProfileControllerTest extends TestCase
     /**
      *
      */
-    public function setUp()
+    public function setUp(): void
     {
         parent::setUp();
-        Log::debug(sprintf('Now in %s.', get_class($this)));
+        Log::debug(sprintf('Now in %s.', \get_class($this)));
     }
 
     /**
-     * @covers \FireflyIII\Http\Controllers\ProfileController::changeEmail()
+     * @covers \FireflyIII\Http\Controllers\ProfileController
      */
-    public function testChangeEmail()
+    public function testChangeEmail(): void
     {
         $this->be($this->user());
         $response = $this->get(route('profile.change-email'));
@@ -63,13 +64,13 @@ class ProfileControllerTest extends TestCase
     }
 
     /**
-     * @covers \FireflyIII\Http\Controllers\ProfileController::changePassword
+     * @covers \FireflyIII\Http\Controllers\ProfileController
      */
-    public function testChangePassword()
+    public function testChangePassword(): void
     {
         // mock stuff
         $journalRepos = $this->mock(JournalRepositoryInterface::class);
-        $journalRepos->shouldReceive('first')->once()->andReturn(new TransactionJournal);
+        $journalRepos->shouldReceive('firstNull')->once()->andReturn(new TransactionJournal);
 
         $this->be($this->user());
         $response = $this->get(route('profile.change-password'));
@@ -78,14 +79,13 @@ class ProfileControllerTest extends TestCase
     }
 
     /**
-     * @covers \FireflyIII\Http\Controllers\ProfileController::code
-     * @covers \FireflyIII\Http\Controllers\ProfileController::getDomain
+     * @covers \FireflyIII\Http\Controllers\ProfileController
      */
-    public function testCode()
+    public function testCode(): void
     {
         // mock stuff
         $journalRepos = $this->mock(JournalRepositoryInterface::class);
-        $journalRepos->shouldReceive('first')->once()->andReturn(new TransactionJournal);
+        $journalRepos->shouldReceive('firstNull')->once()->andReturn(new TransactionJournal);
         Google2FA::shouldReceive('generateSecretKey')->andReturn('secret');
         Google2FA::shouldReceive('getQRCodeInline')->andReturn('long-data-url');
 
@@ -96,10 +96,10 @@ class ProfileControllerTest extends TestCase
     }
 
     /**
-     * @covers                   \FireflyIII\Http\Controllers\ProfileController::confirmEmailChange()
+     * @covers                   \FireflyIII\Http\Controllers\ProfileController
      * @expectedExceptionMessage Invalid token
      */
-    public function testConfirmEmailChangeNoToken()
+    public function testConfirmEmailChangeNoToken(): void
     {
         Preferences::shouldReceive('findByName')->withArgs(['email_change_confirm_token'])->andReturn(new Collection());
         // email_change_confirm_token
@@ -108,9 +108,9 @@ class ProfileControllerTest extends TestCase
     }
 
     /**
-     * @covers                   \FireflyIII\Http\Controllers\ProfileController::confirmEmailChange()
+     * @covers \FireflyIII\Http\Controllers\ProfileController
      */
-    public function testConfirmEmailWithToken()
+    public function testConfirmEmailWithToken(): void
     {
         $repository = $this->mock(UserRepositoryInterface::class);
         $repository->shouldReceive('unblockUser');
@@ -126,13 +126,13 @@ class ProfileControllerTest extends TestCase
     }
 
     /**
-     * @covers \FireflyIII\Http\Controllers\ProfileController::deleteAccount
+     * @covers \FireflyIII\Http\Controllers\ProfileController
      */
-    public function testDeleteAccount()
+    public function testDeleteAccount(): void
     {
         // mock stuff
         $journalRepos = $this->mock(JournalRepositoryInterface::class);
-        $journalRepos->shouldReceive('first')->once()->andReturn(new TransactionJournal);
+        $journalRepos->shouldReceive('firstNull')->once()->andReturn(new TransactionJournal);
 
         $this->be($this->user());
         $response = $this->get(route('profile.delete-account'));
@@ -141,13 +141,13 @@ class ProfileControllerTest extends TestCase
     }
 
     /**
-     * @covers \FireflyIII\Http\Controllers\ProfileController::deleteCode
+     * @covers \FireflyIII\Http\Controllers\ProfileController
      */
-    public function testDeleteCode()
+    public function testDeleteCode(): void
     {
         // mock stuff
         $journalRepos = $this->mock(JournalRepositoryInterface::class);
-        $journalRepos->shouldReceive('first')->once()->andReturn(new TransactionJournal);
+        $journalRepos->shouldReceive('firstNull')->once()->andReturn(new TransactionJournal);
 
         $this->be($this->user());
         $response = $this->get(route('profile.delete-code'));
@@ -158,16 +158,106 @@ class ProfileControllerTest extends TestCase
     }
 
     /**
-     * @covers \FireflyIII\Http\Controllers\ProfileController::index
-     * @covers \FireflyIII\Http\Controllers\ProfileController::__construct
+     * @covers \FireflyIII\Http\Controllers\ProfileController
      */
-    public function testIndex()
+    public function testEnable2FANoSecret(): void
+    {
+        $repository = $this->mock(UserRepositoryInterface::class);
+        $repository->shouldReceive('hasRole')->withArgs([Mockery::any(), 'demo'])->times(1)->andReturn(false);
+
+        // ask about language:
+        $langPreference       = new Preference;
+        $langPreference->data = 'en_US';
+        Preferences::shouldReceive('get')->withArgs(['language', 'en_US'])->andReturn($langPreference)->times(2);
+
+        // ask about twoFactorAuthEnabled
+        $truePref       = new Preference;
+        $truePref->data = true;
+        Preferences::shouldReceive('get')->withArgs(['twoFactorAuthEnabled', false])->andReturn($truePref)->times(1);
+
+        // ask about range
+        $rangePref       = new Preference;
+        $rangePref->data = '1M';
+        Preferences::shouldReceive('get')->withArgs(['viewRange', '1M'])->andReturn($rangePref)->once();
+
+        // ask about list length:
+        $listPref       = new Preference;
+        $listPref->data = '50';
+        Preferences::shouldReceive('get')->withArgs(['list-length', '10'])->andReturn($listPref)->once();
+
+
+        // ask about currency
+        $currencyPref       = new Preference;
+        $currencyPref->data = 'EUR';
+        Preferences::shouldReceive('getForUser')->once()->withArgs([Mockery::any(), 'currencyPreference', 'EUR'])->andReturn($currencyPref);
+        Preferences::shouldReceive('lastActivity')->once();
+        Preferences::shouldReceive('get')->withArgs(['twoFactorAuthSecret'])->twice()->andReturnNull();
+
+        $this->be($this->user());
+        $response = $this->post(route('profile.enable2FA'));
+        $response->assertStatus(302);
+        $response->assertRedirect(route('profile.code'));
+    }
+
+    /**
+     * @covers \FireflyIII\Http\Controllers\ProfileController
+     */
+    public function testEnable2FASecret(): void
+    {
+        $repository = $this->mock(UserRepositoryInterface::class);
+        $repository->shouldReceive('hasRole')->withArgs([Mockery::any(), 'demo'])->times(1)->andReturn(false);
+
+        // ask about language:
+        $langPreference       = new Preference;
+        $langPreference->data = 'en_US';
+        Preferences::shouldReceive('get')->withArgs(['language', 'en_US'])->andReturn($langPreference)->times(2);
+
+        // ask about twoFactorAuthEnabled
+        $truePref       = new Preference;
+        $truePref->data = true;
+        Preferences::shouldReceive('get')->withArgs(['twoFactorAuthEnabled', false])->andReturn($truePref)->times(1);
+
+        // ask about range
+        $rangePref       = new Preference;
+        $rangePref->data = '1M';
+        Preferences::shouldReceive('get')->withArgs(['viewRange', '1M'])->andReturn($rangePref)->once();
+
+        // ask about list length:
+        $listPref       = new Preference;
+        $listPref->data = '50';
+        Preferences::shouldReceive('get')->withArgs(['list-length', '10'])->andReturn($listPref)->once();
+
+        $secretPref       = new Preference;
+        $secretPref->data = 'X';
+        Preferences::shouldReceive('get')->withArgs(['twoFactorAuthSecret'])->twice()->andReturn(null, $secretPref);
+
+        // set pref
+        Preferences::shouldReceive('set')->once()->withArgs(['twoFactorAuthEnabled', 1]);
+
+
+        // ask about currency
+        $currencyPref       = new Preference;
+        $currencyPref->data = 'EUR';
+        Preferences::shouldReceive('getForUser')->once()->withArgs([Mockery::any(), 'currencyPreference', 'EUR'])->andReturn($currencyPref);
+        Preferences::shouldReceive('lastActivity')->once();
+
+
+        $this->be($this->user());
+        $response = $this->post(route('profile.enable2FA'));
+        $response->assertStatus(302);
+        $response->assertRedirect(route('profile.index'));
+    }
+
+    /**
+     * @covers \FireflyIII\Http\Controllers\ProfileController
+     */
+    public function testIndex(): void
     {
         // delete access token.
         Preference::where('user_id', $this->user()->id)->where('name', 'access_token')->delete();
         // mock stuff
         $journalRepos = $this->mock(JournalRepositoryInterface::class);
-        $journalRepos->shouldReceive('first')->once()->andReturn(new TransactionJournal);
+        $journalRepos->shouldReceive('firstNull')->once()->andReturn(new TransactionJournal);
 
         $this->be($this->user());
         $response = $this->get(route('profile.index'));
@@ -176,9 +266,9 @@ class ProfileControllerTest extends TestCase
     }
 
     /**
-     * @covers \FireflyIII\Http\Controllers\ProfileController::postChangeEmail
+     * @covers \FireflyIII\Http\Controllers\ProfileController
      */
-    public function testPostChangeEmail()
+    public function testPostChangeEmail(): void
     {
         $data       = [
             'email' => 'new@example.com',
@@ -186,6 +276,7 @@ class ProfileControllerTest extends TestCase
         $repository = $this->mock(UserRepositoryInterface::class);
         $repository->shouldReceive('findByEmail')->once()->andReturn(null);
         $repository->shouldReceive('changeEmail')->once()->andReturn(true);
+        $repository->shouldReceive('hasRole')->withArgs([Mockery::any(), 'demo'])->once()->andReturn(false);
 
         $this->be($this->user());
         $response = $this->post(route('profile.change-email.post'), $data);
@@ -195,9 +286,9 @@ class ProfileControllerTest extends TestCase
     }
 
     /**
-     * @covers \FireflyIII\Http\Controllers\ProfileController::postChangeEmail
+     * @covers \FireflyIII\Http\Controllers\ProfileController
      */
-    public function testPostChangeEmailExisting()
+    public function testPostChangeEmailExisting(): void
     {
 
         $data       = [
@@ -205,6 +296,7 @@ class ProfileControllerTest extends TestCase
         ];
         $repository = $this->mock(UserRepositoryInterface::class);
         $repository->shouldReceive('findByEmail')->once()->andReturn(new User);
+        $repository->shouldReceive('hasRole')->withArgs([Mockery::any(), 'demo'])->once()->andReturn(false);
 
         $this->be($this->user());
         $response = $this->post(route('profile.change-email.post'), $data);
@@ -214,12 +306,13 @@ class ProfileControllerTest extends TestCase
     }
 
     /**
-     * @covers \FireflyIII\Http\Controllers\ProfileController::postChangeEmail
+     * @covers \FireflyIII\Http\Controllers\ProfileController
      */
-    public function testPostChangeEmailSame()
+    public function testPostChangeEmailSame(): void
     {
         $repository = $this->mock(UserRepositoryInterface::class);
-        $data       = [
+        $repository->shouldReceive('hasRole')->withArgs([Mockery::any(), 'demo'])->once()->andReturn(false);
+        $data = [
             'email' => $this->user()->email,
         ];
         $this->be($this->user());
@@ -230,16 +323,16 @@ class ProfileControllerTest extends TestCase
     }
 
     /**
-     * @covers \FireflyIII\Http\Controllers\ProfileController::postChangePassword
-     * @covers \FireflyIII\Http\Controllers\ProfileController::validatePassword
+     * @covers \FireflyIII\Http\Controllers\ProfileController
      */
-    public function testPostChangePassword()
+    public function testPostChangePassword(): void
     {
         // mock stuff
         $journalRepos = $this->mock(JournalRepositoryInterface::class);
-        $journalRepos->shouldReceive('first')->once()->andReturn(new TransactionJournal);
+        $journalRepos->shouldReceive('firstNull')->once()->andReturn(new TransactionJournal);
         $repository = $this->mock(UserRepositoryInterface::class);
         $repository->shouldReceive('changePassword');
+        $repository->shouldReceive('hasRole')->withArgs([Mockery::any(), 'demo'])->once()->andReturn(false);
 
         $data = [
             'current_password'          => 'james',
@@ -253,16 +346,16 @@ class ProfileControllerTest extends TestCase
     }
 
     /**
-     * @covers \FireflyIII\Http\Controllers\ProfileController::postChangePassword
-     * @covers \FireflyIII\Http\Controllers\ProfileController::validatePassword
+     * @covers \FireflyIII\Http\Controllers\ProfileController
      */
-    public function testPostChangePasswordNotCorrect()
+    public function testPostChangePasswordNotCorrect(): void
     {
         // mock stuff
         $journalRepos = $this->mock(JournalRepositoryInterface::class);
-        $journalRepos->shouldReceive('first')->once()->andReturn(new TransactionJournal);
+        $journalRepos->shouldReceive('firstNull')->once()->andReturn(new TransactionJournal);
         $repository = $this->mock(UserRepositoryInterface::class);
         $repository->shouldReceive('changePassword');
+        $repository->shouldReceive('hasRole')->withArgs([Mockery::any(), 'demo'])->once()->andReturn(false);
 
         $data = [
             'current_password'          => 'james3',
@@ -276,16 +369,16 @@ class ProfileControllerTest extends TestCase
     }
 
     /**
-     * @covers \FireflyIII\Http\Controllers\ProfileController::postChangePassword
-     * @covers \FireflyIII\Http\Controllers\ProfileController::validatePassword
+     * @covers \FireflyIII\Http\Controllers\ProfileController
      */
-    public function testPostChangePasswordSameNew()
+    public function testPostChangePasswordSameNew(): void
     {
         // mock stuff
         $journalRepos = $this->mock(JournalRepositoryInterface::class);
-        $journalRepos->shouldReceive('first')->once()->andReturn(new TransactionJournal);
+        $journalRepos->shouldReceive('firstNull')->once()->andReturn(new TransactionJournal);
         $repository = $this->mock(UserRepositoryInterface::class);
         $repository->shouldReceive('changePassword');
+        $repository->shouldReceive('hasRole')->withArgs([Mockery::any(), 'demo'])->once()->andReturn(false);
 
         $data = [
             'current_password'          => 'james',
@@ -299,9 +392,9 @@ class ProfileControllerTest extends TestCase
     }
 
     /**
-     * @covers \FireflyIII\Http\Controllers\ProfileController::postCode
+     * @covers \FireflyIII\Http\Controllers\ProfileController
      */
-    public function testPostCode()
+    public function testPostCode(): void
     {
         $secret = '0123456789abcde';
         $key    = '123456';
@@ -326,15 +419,16 @@ class ProfileControllerTest extends TestCase
     }
 
     /**
-     * @covers \FireflyIII\Http\Controllers\ProfileController::postDeleteAccount
+     * @covers \FireflyIII\Http\Controllers\ProfileController
      */
-    public function testPostDeleteAccount()
+    public function testPostDeleteAccount(): void
     {
         // mock stuff
         $journalRepos = $this->mock(JournalRepositoryInterface::class);
-        $journalRepos->shouldReceive('first')->once()->andReturn(new TransactionJournal);
+        $journalRepos->shouldReceive('firstNull')->once()->andReturn(new TransactionJournal);
         $repository = $this->mock(UserRepositoryInterface::class);
         $repository->shouldReceive('destroy')->once();
+        $repository->shouldReceive('hasRole')->withArgs([Mockery::any(), 'demo'])->once()->andReturn(false);
         $data = [
             'password' => 'james',
         ];
@@ -345,14 +439,15 @@ class ProfileControllerTest extends TestCase
     }
 
     /**
-     * @covers \FireflyIII\Http\Controllers\ProfileController::postDeleteAccount
+     * @covers \FireflyIII\Http\Controllers\ProfileController
      */
-    public function testPostDeleteAccountWrong()
+    public function testPostDeleteAccountWrong(): void
     {
         // mock stuff
         $repository   = $this->mock(UserRepositoryInterface::class);
         $journalRepos = $this->mock(JournalRepositoryInterface::class);
-        $journalRepos->shouldReceive('first')->once()->andReturn(new TransactionJournal);
+        $journalRepos->shouldReceive('firstNull')->once()->andReturn(new TransactionJournal);
+        $repository->shouldReceive('hasRole')->withArgs([Mockery::any(), 'demo'])->once()->andReturn(false);
         $data = [
             'password' => 'james2',
         ];
@@ -364,10 +459,12 @@ class ProfileControllerTest extends TestCase
     }
 
     /**
-     * @covers \FireflyIII\Http\Controllers\ProfileController::regenerate()
+     * @covers \FireflyIII\Http\Controllers\ProfileController
      */
-    public function testRegenerate()
+    public function testRegenerate(): void
     {
+        $repository = $this->mock(UserRepositoryInterface::class);
+        $repository->shouldReceive('hasRole')->withArgs([Mockery::any(), 'demo'])->once()->andReturn(false);
         $token        = '';
         $currentToken = Preference::where('user_id', $this->user()->id)->where('name', 'access_token')->first();
         if (null !== $currentToken) {
@@ -389,9 +486,9 @@ class ProfileControllerTest extends TestCase
     }
 
     /**
-     * @covers \FireflyIII\Http\Controllers\ProfileController::undoEmailChange()
+     * @covers \FireflyIII\Http\Controllers\ProfileController
      */
-    public function testUndoEmailChange()
+    public function testUndoEmailChange(): void
     {
         $hash                  = hash('sha256', 'previous@example.com');
         $tokenPreference       = new Preference;
@@ -418,10 +515,10 @@ class ProfileControllerTest extends TestCase
     }
 
     /**
-     * @covers                   \FireflyIII\Http\Controllers\ProfileController::undoEmailChange()
+     * @covers                   \FireflyIII\Http\Controllers\ProfileController
      * @expectedExceptionMessage Invalid token
      */
-    public function testUndoEmailChangeBadHash()
+    public function testUndoEmailChangeBadHash(): void
     {
         $repository            = $this->mock(UserRepositoryInterface::class);
         $hash                  = hash('sha256', 'previous@example.comX');
@@ -443,10 +540,10 @@ class ProfileControllerTest extends TestCase
     }
 
     /**
-     * @covers                   \FireflyIII\Http\Controllers\ProfileController::undoEmailChange()
+     * @covers                   \FireflyIII\Http\Controllers\ProfileController
      * @expectedExceptionMessage Invalid token
      */
-    public function testUndoEmailChangeBadToken()
+    public function testUndoEmailChangeBadToken(): void
     {
         $repository = $this->mock(UserRepositoryInterface::class);
         Preferences::shouldReceive('findByName')->once()->andReturn(new Collection);

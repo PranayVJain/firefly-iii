@@ -32,9 +32,9 @@ use Tests\TestCase;
 class DescriptionContainsTest extends TestCase
 {
     /**
-     * @covers \FireflyIII\TransactionRules\Triggers\DescriptionContains::triggered
+     * @covers \FireflyIII\TransactionRules\Triggers\DescriptionContains
      */
-    public function testTriggeredCase()
+    public function testTriggeredCase(): void
     {
         $journal              = new TransactionJournal;
         $journal->description = 'Lorem IPSUM bla bla ';
@@ -44,9 +44,9 @@ class DescriptionContainsTest extends TestCase
     }
 
     /**
-     * @covers \FireflyIII\TransactionRules\Triggers\DescriptionContains::triggered
+     * @covers \FireflyIII\TransactionRules\Triggers\DescriptionContains
      */
-    public function testTriggeredDefault()
+    public function testTriggeredDefault(): void
     {
         $journal              = new TransactionJournal;
         $journal->description = 'Should contain test string';
@@ -56,9 +56,9 @@ class DescriptionContainsTest extends TestCase
     }
 
     /**
-     * @covers \FireflyIII\TransactionRules\Triggers\DescriptionContains::triggered
+     * @covers \FireflyIII\TransactionRules\Triggers\DescriptionContains
      */
-    public function testTriggeredEnd()
+    public function testTriggeredEnd(): void
     {
         $journal              = new TransactionJournal;
         $journal->description = 'Something is going to happen';
@@ -68,9 +68,9 @@ class DescriptionContainsTest extends TestCase
     }
 
     /**
-     * @covers \FireflyIII\TransactionRules\Triggers\DescriptionContains::triggered
+     * @covers \FireflyIII\TransactionRules\Triggers\DescriptionContains
      */
-    public function testTriggeredNot()
+    public function testTriggeredNot(): void
     {
         $journal              = new TransactionJournal;
         $journal->description = 'Lorem IPSUM bla bla ';
@@ -80,9 +80,9 @@ class DescriptionContainsTest extends TestCase
     }
 
     /**
-     * @covers \FireflyIII\TransactionRules\Triggers\DescriptionContains::triggered
+     * @covers \FireflyIII\TransactionRules\Triggers\DescriptionContains
      */
-    public function testTriggeredStart()
+    public function testTriggeredStart(): void
     {
         $journal              = new TransactionJournal;
         $journal->description = 'Something is going to happen';
@@ -92,9 +92,9 @@ class DescriptionContainsTest extends TestCase
     }
 
     /**
-     * @covers \FireflyIII\TransactionRules\Triggers\DescriptionContains::willMatchEverything
+     * @covers \FireflyIII\TransactionRules\Triggers\DescriptionContains
      */
-    public function testWillMatchEverythingEmpty()
+    public function testWillMatchEverythingEmpty(): void
     {
         $value  = '';
         $result = DescriptionContains::willMatchEverything($value);
@@ -102,9 +102,9 @@ class DescriptionContainsTest extends TestCase
     }
 
     /**
-     * @covers \FireflyIII\TransactionRules\Triggers\DescriptionContains::willMatchEverything
+     * @covers \FireflyIII\TransactionRules\Triggers\DescriptionContains
      */
-    public function testWillMatchEverythingNotNull()
+    public function testWillMatchEverythingNotNull(): void
     {
         $value  = 'x';
         $result = DescriptionContains::willMatchEverything($value);
@@ -112,9 +112,9 @@ class DescriptionContainsTest extends TestCase
     }
 
     /**
-     * @covers \FireflyIII\TransactionRules\Triggers\DescriptionContains::willMatchEverything
+     * @covers \FireflyIII\TransactionRules\Triggers\DescriptionContains
      */
-    public function testWillMatchEverythingNull()
+    public function testWillMatchEverythingNull(): void
     {
         $value  = null;
         $result = DescriptionContains::willMatchEverything($value);

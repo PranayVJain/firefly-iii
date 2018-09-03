@@ -31,27 +31,22 @@ use Tests\TestCase;
 
 /**
  * Class PiggyBankControllerTest
- *
- * @SuppressWarnings(PHPMD.TooManyPublicMethods)
- * @SuppressWarnings(PHPMD.ExcessiveMethodLength)
- * @SuppressWarnings(PHPMD.CouplingBetweenObjects)
  */
 class PiggyBankControllerTest extends TestCase
 {
     /**
      *
      */
-    public function setUp()
+    public function setUp(): void
     {
         parent::setUp();
-        Log::debug(sprintf('Now in %s.', get_class($this)));
+        Log::debug(sprintf('Now in %s.', \get_class($this)));
     }
 
     /**
-     * @covers \FireflyIII\Http\Controllers\Chart\PiggyBankController::history
-     * @covers \FireflyIII\Http\Controllers\Chart\PiggyBankController::__construct
+     * @covers \FireflyIII\Http\Controllers\Chart\PiggyBankController
      */
-    public function testHistory()
+    public function testHistory(): void
     {
         $generator  = $this->mock(GeneratorInterface::class);
         $repository = $this->mock(PiggyBankRepositoryInterface::class);

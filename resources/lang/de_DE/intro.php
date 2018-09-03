@@ -1,8 +1,8 @@
 <?php
-declare(strict_types=1);
+
 /**
  * intro.php
- * Copyright (c) 2017 thegrumpydictator@gmail.com
+ * Copyright (c) 2018 thegrumpydictator@gmail.com
  *
  * This file is part of Firefly III.
  *
@@ -19,6 +19,8 @@ declare(strict_types=1);
  * You should have received a copy of the GNU General Public License
  * along with Firefly III. If not, see <http://www.gnu.org/licenses/>.
  */
+
+declare(strict_types=1);
 
 return [
     // index
@@ -91,6 +93,7 @@ return [
     'piggy-banks_show_piggyEvents'                            => 'Hinzufügungen oder Entfernungen sind hier ebenfalls aufgeführt.',
 
     // bill index
+    'bills_index_rules'                                       => 'Hier sehen Sie, welche Regeln prüfen, ob diese Rechnung betroffen ist',
     'bills_index_paid_in_period'                              => 'Dieses Feld zeigt an, wann die Rechnung zuletzt bezahlt wurde.',
     'bills_index_expected_in_period'                          => 'Dieses Feld zeigt für jede Rechnung an, ob und wann die nächste Rechnung erwartet wird.',
 
@@ -100,11 +103,12 @@ return [
     'bills_show_billChart'                                    => 'Diese Grafik zeigt die mit dieser Rechnung verknüpften Transaktionen.',
 
     // create bill
+    'bills_create_intro'                                      => 'Verwendet Rechnungen, um den Gesamtbetrag zu ermitteln, den Sie in jedem Zeitraum zahlen müssen. Denken Sie an Ausgaben wie Miete, Versicherung oder Hypothekenzahlungen.',
     'bills_create_name'                                       => 'Verwenden Sie einen aussagekräftigen Namen wie "Miete" oder "Krankenversicherung".',
-    'bills_create_match'                                      => 'Um Transaktionen abzugleichen, verwenden Sie Begriffe aus diesen Transaktionen oder dem betreffenden Aufwandskonto. Alle Wörter müssen übereinstimmen.',
+    //'bills_create_match'                                      => 'To match transactions, use terms from those transactions or the expense account involved. All words must match.',
     'bills_create_amount_min_holder'                          => 'Wählen Sie einen Mindest- und Höchstbetrag für diese Rechnung aus.',
     'bills_create_repeat_freq_holder'                         => 'Die meisten Rechnungen wiederholen sich monatlich, aber Sie können hier eine andere Frequenz einstellen.',
-    'bills_create_skip_holder'                                => 'Wenn eine Rechnung z.B. alle 2 Wochen wiederholt wird, sollte das Feld „überspringen” auf „1” gesetzt werden, um alle 2 Wochen zu überspringen.',
+    'bills_create_skip_holder'                                => 'Wenn eine Rechnung alle 2 Wochen wiederholt wird, sollte das Feld „Überspringen” auf „1” festgelegt werden, um jede zweite Woche zu überspringen.',
 
     // rules index
     'rules_index_intro'                                       => 'Mit Firefly III können Sie Regeln verwalten, die automatisch auf alle Transaktionen angewendet werden, die Sie erstellen oder bearbeiten.',

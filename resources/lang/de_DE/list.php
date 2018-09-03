@@ -1,9 +1,8 @@
 <?php
-declare(strict_types=1);
 
 /**
  * list.php
- * Copyright (c) 2017 thegrumpydictator@gmail.com
+ * Copyright (c) 2018 thegrumpydictator@gmail.com
  *
  * This file is part of Firefly III.
  *
@@ -21,6 +20,8 @@ declare(strict_types=1);
  * along with Firefly III. If not, see <http://www.gnu.org/licenses/>.
  */
 
+declare(strict_types=1);
+
 return [
     'buttons'                 => 'Schaltflächen',
     'icon'                    => 'Symbol',
@@ -33,6 +34,7 @@ return [
     'name'                    => 'Name',
     'role'                    => 'Rolle',
     'currentBalance'          => 'Aktueller Kontostand',
+    'linked_to_rules'         => 'Verlinkte Regeln',
     'active'                  => 'Aktiv?',
     'lastActivity'            => 'Letzte Aktivität',
     'balanceDiff'             => 'Saldendifferenz',
@@ -102,6 +104,7 @@ return [
     'sum_transfers'           => 'Summe der Umbuchungen',
     'reconcile'               => 'Abgleichen',
     'account_on_spectre'      => 'Konto (Spectre)',
+    'account_on_ynab'         => 'Konto (YNAB)',
     'do_import'               => 'Von diesem Konto importieren',
     'sepa-ct-id'              => 'SEPA • Ende-zu-Ende-Identifikationsnummer',
     'sepa-ct-op'              => 'SEPA • Zielkonto-Identifikationsnummer',
@@ -110,5 +113,24 @@ return [
     'sepa-cc'                 => 'SEPA • Verrechnungsschlüssel',
     'sepa-ep'                 => 'SEPA • Externer Verwendungszweck',
     'sepa-ci'                 => 'SEPA • Identifikationsnummer des Zahlungsempfängers',
+    'sepa-batch-id'           => 'SEPA Batch-Kennung',
+    'external_id'             => 'Externe Kennung',
     'account_at_bunq'         => 'Konto bei „bunq”',
+    'file_name'               => 'Dateiname',
+    'file_size'               => 'Dateigröße',
+    'file_type'               => 'Dateityp',
+    'attached_to'             => 'Zugewiesen zu',
+    'file_exists'             => 'Datei existiert',
+    'spectre_bank'            => 'Bank',
+    'spectre_last_use'        => 'Letzte Anmeldung',
+    'spectre_status'          => 'Status',
+    'bunq_payment_id'         => 'bunq-Zahlungskennung',
+    'repetitions'             => 'Wiederholungen',
+    'title'                   => 'Titel',
+    'transaction_s'           => 'Buchung(en)',
+    'field'                   => 'Feld',
+    'value'                   => 'Wert',
+    'interest'                => 'Zinsen',
+    'interest_period'         => 'Verzinsungszeitraum',
+    'liability_type'          => 'Verbindlichkeitsart',
 ];

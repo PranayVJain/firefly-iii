@@ -36,9 +36,9 @@ use Tests\TestCase;
 class OpposingAccountIbansTest extends TestCase
 {
     /**
-     * @covers \FireflyIII\Import\Mapper\OpposingAccountIbans::getMap()
+     * @covers \FireflyIII\Import\Mapper\OpposingAccountIbans
      */
-    public function testGetMapBasic()
+    public function testGetMapBasic(): void
     {
         $one        = new Account;
         $one->id    = 21;

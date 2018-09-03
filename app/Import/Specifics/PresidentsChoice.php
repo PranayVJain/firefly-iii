@@ -28,22 +28,30 @@ namespace FireflyIII\Import\Specifics;
 class PresidentsChoice implements SpecificInterface
 {
     /**
+     * Description of specific.
+     *
      * @return string
+     * @codeCoverageIgnore
      */
     public static function getDescription(): string
     {
-        return 'Fixes problems with files from Presidents Choice Financial.';
+        return 'import.specific_pres_descr';
     }
 
     /**
+     * Name of specific.
+     *
      * @return string
+     * @codeCoverageIgnore
      */
     public static function getName(): string
     {
-        return 'Presidents "Choice"';
+        return 'import.specific_pres_name';
     }
 
     /**
+     * Run this specific.
+     *
      * @param array $row
      *
      * @return array
@@ -53,7 +61,7 @@ class PresidentsChoice implements SpecificInterface
         $row = array_values($row);
         // first, if column 2 is empty and 3 is not, do nothing.
         // if column 3 is empty and column 2 is not, move amount to column 3, *-1
-        if (isset($row[3]) && 0 === strlen($row[3])) {
+        if (isset($row[3]) && '' === $row[3]) {
             $row[3] = bcmul($row[2], '-1');
         }
         if (isset($row[1])) {

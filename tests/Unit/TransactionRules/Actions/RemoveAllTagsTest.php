@@ -34,10 +34,9 @@ use Tests\TestCase;
 class RemoveAllTagsTest extends TestCase
 {
     /**
-     * @covers \FireflyIII\TransactionRules\Actions\RemoveAllTags::__construct()
-     * @covers \FireflyIII\TransactionRules\Actions\RemoveAllTags::act()
+     * @covers \FireflyIII\TransactionRules\Actions\RemoveAllTags
      */
-    public function testAct()
+    public function testAct(): void
     {
         // find journal with at least one tag
         $journalIds = DB::table('tag_transaction_journal')->get(['transaction_journal_id'])->pluck('transaction_journal_id')->toArray();

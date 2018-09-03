@@ -25,6 +25,7 @@ namespace Tests\Unit\Factory;
 
 
 use FireflyIII\Factory\BillFactory;
+use Log;
 use Tests\TestCase;
 
 /**
@@ -33,25 +34,36 @@ use Tests\TestCase;
 class BillFactoryTest extends TestCase
 {
 
+
+    /**
+     *
+     */
+    public function setUp(): void
+    {
+        parent::setUp();
+        Log::debug(sprintf('Now in %s.', \get_class($this)));
+    }
+
     /**
      * Create basic bill with minimum data.
      *
      * @covers \FireflyIII\Factory\BillFactory
      * @covers \FireflyIII\Services\Internal\Support\BillServiceTrait
      */
-    public function testCreateBasic()
+    public function testCreateBasic(): void
     {
         $data = [
-            'name'        => 'Some new bill #' . random_int(1, 1000),
-            'match'       => 'i,am,word' . random_int(1, 1000),
-            'amount_min'  => '5',
-            'amount_max'  => '10',
-            'date'        => '2018-01-01',
-            'repeat_freq' => 'monthly',
-            'skip'        => 0,
-            'automatch'   => true,
-            'active'      => true,
-            'notes'       => 'Hello!',
+            'name'          => 'Some new bill #' . random_int(1, 10000),
+            'amount_min'    => '5',
+            'currency_id'   => 1,
+            'currency_code' => '',
+            'amount_max'    => '10',
+            'date'          => '2018-01-01',
+            'repeat_freq'   => 'monthly',
+            'skip'          => 0,
+            'automatch'     => true,
+            'active'        => true,
+            'notes'         => 'Hello!',
         ];
 
         /** @var BillFactory $factory */
@@ -60,7 +72,6 @@ class BillFactoryTest extends TestCase
         $bill = $factory->create($data);
 
         $this->assertEquals($data['name'], $bill->name);
-        $this->assertEquals($data['match'], $bill->match);
         $this->assertEquals($data['amount_min'], $bill->amount_min);
         $this->assertEquals($data['repeat_freq'], $bill->repeat_freq);
         $note = $bill->notes()->first();
@@ -74,19 +85,20 @@ class BillFactoryTest extends TestCase
      * @covers \FireflyIII\Factory\BillFactory
      * @covers \FireflyIII\Services\Internal\Support\BillServiceTrait
      */
-    public function testCreateEmptyNotes()
+    public function testCreateEmptyNotes(): void
     {
         $data = [
-            'name'        => 'Some new bill #' . random_int(1, 1000),
-            'match'       => 'i,am,word' . random_int(1, 1000),
-            'amount_min'  => '5',
-            'amount_max'  => '10',
-            'date'        => '2018-01-01',
-            'repeat_freq' => 'monthly',
-            'skip'        => 0,
-            'automatch'   => true,
-            'active'      => true,
-            'notes'       => '',
+            'name'          => 'Some new bill #' . random_int(1, 10000),
+            'amount_min'    => '5',
+            'amount_max'    => '10',
+            'date'          => '2018-01-01',
+            'repeat_freq'   => 'monthly',
+            'currency_id'   => 1,
+            'currency_code' => '',
+            'skip'          => 0,
+            'automatch'     => true,
+            'active'        => true,
+            'notes'         => '',
         ];
 
         /** @var BillFactory $factory */
@@ -95,7 +107,6 @@ class BillFactoryTest extends TestCase
         $bill = $factory->create($data);
 
         $this->assertEquals($data['name'], $bill->name);
-        $this->assertEquals($data['match'], $bill->match);
         $this->assertEquals($data['amount_min'], $bill->amount_min);
         $this->assertEquals($data['repeat_freq'], $bill->repeat_freq);
         $this->assertEquals(0, $bill->notes()->count());
@@ -108,7 +119,7 @@ class BillFactoryTest extends TestCase
      * @covers \FireflyIII\Factory\BillFactory
      *
      */
-    public function testFindById()
+    public function testFindById(): void
     {
         $existing = $this->user()->piggyBanks()->first();
         /** @var BillFactory $factory */
@@ -124,7 +135,7 @@ class BillFactoryTest extends TestCase
      * @covers \FireflyIII\Factory\BillFactory
      *
      */
-    public function testFindByName()
+    public function testFindByName(): void
     {
         $existing = $this->user()->bills()->first();
         /** @var BillFactory $factory */
@@ -141,12 +152,12 @@ class BillFactoryTest extends TestCase
      * @covers \FireflyIII\Factory\BillFactory
      *
      */
-    public function testFindByUnknownName()
+    public function testFindByUnknownName(): void
     {
         /** @var BillFactory $factory */
         $factory = app(BillFactory::class);
         $factory->setUser($this->user());
-        $piggy = $factory->find(null, 'I dont exist' . random_int(1, 1000));
+        $piggy = $factory->find(null, 'I dont exist' . random_int(1, 10000));
 
         $this->assertNull($piggy);
     }
@@ -157,7 +168,7 @@ class BillFactoryTest extends TestCase
      * @covers \FireflyIII\Factory\BillFactory
      *
      */
-    public function testFindNull()
+    public function testFindNull(): void
     {
         /** @var BillFactory $factory */
         $factory = app(BillFactory::class);

@@ -1,9 +1,8 @@
 <?php
-declare(strict_types=1);
 
 /**
  * list.php
- * Copyright (c) 2017 thegrumpydictator@gmail.com
+ * Copyright (c) 2018 thegrumpydictator@gmail.com
  *
  * This file is part of Firefly III.
  *
@@ -21,6 +20,8 @@ declare(strict_types=1);
  * along with Firefly III. If not, see <http://www.gnu.org/licenses/>.
  */
 
+declare(strict_types=1);
+
 return [
     'buttons'                 => 'Boutons',
     'icon'                    => 'Icône',
@@ -33,6 +34,7 @@ return [
     'name'                    => 'Nom',
     'role'                    => 'Rôle',
     'currentBalance'          => 'Solde courant',
+    'linked_to_rules'         => 'Règles applicables',
     'active'                  => 'Actif ?',
     'lastActivity'            => 'Activité récente',
     'balanceDiff'             => 'Différence d\'équilibre',
@@ -41,7 +43,7 @@ return [
     'created_at'              => 'Créé le',
     'account'                 => 'Compte',
     'matchingAmount'          => 'Montant',
-    'split_number'            => 'Segmenter en',
+    'split_number'            => 'Ventilation n°',
     'destination'             => 'Destination',
     'source'                  => 'Source',
     'next_expected_match'     => 'Prochaine association attendue',
@@ -93,7 +95,7 @@ return [
     'tags'                    => 'Tags',
     'inward'                  => 'Description vers l’intérieur',
     'outward'                 => 'Description de l’extérieur',
-    'number_of_transactions'  => 'Nombre de transactions',
+    'number_of_transactions'  => 'Impact sur l\'autre transaction',
     'total_amount'            => 'Montant total',
     'sum'                     => 'Somme',
     'sum_excluding_transfers' => 'Somme (hors transferts)',
@@ -102,6 +104,7 @@ return [
     'sum_transfers'           => 'Somme des transferts',
     'reconcile'               => 'Rapprocher',
     'account_on_spectre'      => 'Compte (Spectre)',
+    'account_on_ynab'         => 'Compte (YNAB)',
     'do_import'               => 'Importer depuis ce compte',
     'sepa-ct-id'              => 'Identificateur de bout en bout SEPA',
     'sepa-ct-op'              => 'Identifiant de compte SEPA opposable',
@@ -109,6 +112,25 @@ return [
     'sepa-country'            => 'Pays SEPA',
     'sepa-cc'                 => 'Code de compensation SEPA',
     'sepa-ep'                 => 'Objectif externe SEPA',
-    'sepa-ci'                 => 'Identifiant SEPA Creditor',
-    'account_at_bunq'         => 'Account with bunq',
+    'sepa-ci'                 => 'Identifiant Créancier SEPA',
+    'sepa-batch-id'           => 'ID de lot SEPA',
+    'external_id'             => 'ID externe',
+    'account_at_bunq'         => 'Compte avec bunq',
+    'file_name'               => 'Nom du fichier',
+    'file_size'               => 'Taille du fichier',
+    'file_type'               => 'Type de fichier',
+    'attached_to'             => 'Attaché à',
+    'file_exists'             => 'Le fichier existe',
+    'spectre_bank'            => 'Banque',
+    'spectre_last_use'        => 'Dernière connexion',
+    'spectre_status'          => 'Statut',
+    'bunq_payment_id'         => 'ID de paiement bunq',
+    'repetitions'             => 'Répétitions',
+    'title'                   => 'Titre',
+    'transaction_s'           => 'Opération(s)',
+    'field'                   => 'Champ',
+    'value'                   => 'Valeur',
+    'interest'                => 'Intérêt',
+    'interest_period'         => 'période d’intérêt',
+    'liability_type'          => 'Type de passif',
 ];

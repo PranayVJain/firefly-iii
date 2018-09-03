@@ -25,7 +25,7 @@ namespace FireflyIII\Transformers;
 
 
 use Carbon\Carbon;
-use FireflyIII\Helpers\Collector\JournalCollectorInterface;
+use FireflyIII\Helpers\Collector\TransactionCollectorInterface;
 use FireflyIII\Models\Account;
 use FireflyIII\Models\AccountType;
 use FireflyIII\Models\TransactionCurrency;
@@ -104,7 +104,7 @@ class AccountTransformer extends TransformerAbstract
         $pageSize = (int)app('preferences')->getForUser($account->user, 'listPageSize', 50)->data;
 
         // journals always use collector and limited using URL parameters.
-        $collector = app(JournalCollectorInterface::class);
+        $collector = app(TransactionCollectorInterface::class);
         $collector->setUser($account->user);
         $collector->withOpposingAccount()->withCategoryInformation()->withBudgetInformation();
         if ($account->accountType->type === AccountType::ASSET) {
@@ -116,9 +116,9 @@ class AccountTransformer extends TransformerAbstract
             $collector->setRange($this->parameters->get('start'), $this->parameters->get('end'));
         }
         $collector->setLimit($pageSize)->setPage($this->parameters->get('page'));
-        $journals = $collector->getJournals();
+        $transactions = $collector->getTransactions();
 
-        return $this->collection($journals, new TransactionTransformer($this->parameters), 'transactions');
+        return $this->collection($transactions, new TransactionTransformer($this->parameters), 'transactions');
     }
 
     /**
@@ -132,7 +132,7 @@ class AccountTransformer extends TransformerAbstract
      */
     public function includeUser(Account $account): Item
     {
-        return $this->item($account->user, new UserTransformer($this->parameters), 'user');
+        return $this->item($account->user, new UserTransformer($this->parameters), 'users');
     }
 
     /**
@@ -148,16 +148,18 @@ class AccountTransformer extends TransformerAbstract
 
         $type = $account->accountType->type;
         $role = $this->repository->getMetaValue($account, 'accountRole');
-        if (strlen($role) === 0 || $type !== AccountType::ASSET) {
+        if ($type !== AccountType::ASSET || '' === (string)$role) {
             $role = null;
         }
-        $currencyId    = (int)$this->repository->getMetaValue($account, 'currency_id');
-        $currencyCode  = null;
-        $decimalPlaces = 2;
+        $currencyId     = (int)$this->repository->getMetaValue($account, 'currency_id');
+        $currencyCode   = null;
+        $currencySymbol = null;
+        $decimalPlaces  = 2;
         if ($currencyId > 0) {
-            $currency      = TransactionCurrency::find($currencyId);
-            $currencyCode  = $currency->code;
-            $decimalPlaces = $currency->decimal_places;
+            $currency       = TransactionCurrency::find($currencyId);
+            $currencyCode   = $currency->code;
+            $decimalPlaces  = $currency->decimal_places;
+            $currencySymbol = $currency->symbol;
         }
 
         $date = new Carbon;
@@ -165,13 +167,13 @@ class AccountTransformer extends TransformerAbstract
             $date = $this->parameters->get('date');
         }
 
-        if ($currencyId === 0) {
+        if (0 === $currencyId) {
             $currencyId = null;
         }
 
         $monthlyPaymentDate = null;
         $creditCardType     = null;
-        if ($role === 'ccAsset' && $type === AccountType::ASSET) {
+        if ('ccAsset' === $role && $type === AccountType::ASSET) {
             $creditCardType     = $this->repository->getMetaValue($account, 'ccType');
             $monthlyPaymentDate = $this->repository->getMetaValue($account, 'ccMonthlyPaymentDate');
         }
@@ -192,10 +194,12 @@ class AccountTransformer extends TransformerAbstract
             'updated_at'           => $account->updated_at->toAtomString(),
             'created_at'           => $account->created_at->toAtomString(),
             'name'                 => $account->name,
-            'active'               => (int)$account->active === 1,
+            'active'               => 1 === (int)$account->active,
             'type'                 => $type,
             'currency_id'          => $currencyId,
             'currency_code'        => $currencyCode,
+            'currency_symbol'      => $currencySymbol,
+            'currency_dp'          => $decimalPlaces,
             'current_balance'      => round(app('steam')->balance($account, $date), $decimalPlaces),
             'current_balance_date' => $date->format('Y-m-d'),
             'notes'                => $this->repository->getNoteText($account),

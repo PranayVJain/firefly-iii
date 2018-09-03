@@ -39,16 +39,16 @@ class FrontpageControllerTest extends TestCase
     /**
      *
      */
-    public function setUp()
+    public function setUp(): void
     {
         parent::setUp();
-        Log::debug(sprintf('Now in %s.', get_class($this)));
+        Log::debug(sprintf('Now in %s.', \get_class($this)));
     }
 
     /**
-     * @covers \FireflyIII\Http\Controllers\Json\FrontpageController::piggyBanks
+     * @covers \FireflyIII\Http\Controllers\Json\FrontpageController
      */
-    public function testPiggyBanks()
+    public function testPiggyBanks(): void
     {
         $piggy      = $this->user()->piggyBanks()->first();
         $repository = $this->mock(PiggyBankRepositoryInterface::class);

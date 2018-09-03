@@ -34,10 +34,9 @@ use Tests\TestCase;
 class ClearCategoryTest extends TestCase
 {
     /**
-     * @covers \FireflyIII\TransactionRules\Actions\ClearCategory::__construct()
-     * @covers \FireflyIII\TransactionRules\Actions\ClearCategory::act()
+     * @covers \FireflyIII\TransactionRules\Actions\ClearCategory
      */
-    public function testAct()
+    public function testAct(): void
     {
         // associate budget with journal:
         $journal  = TransactionJournal::inRandomOrder()->whereNull('deleted_at')->first();
@@ -56,7 +55,7 @@ class ClearCategoryTest extends TestCase
         $this->assertEquals(0, $journal->categories()->count());
 
         /** @var Transaction $transaction */
-        foreach($journal->transactions as $transaction) {
+        foreach ($journal->transactions as $transaction) {
             $this->assertEquals(0, $transaction->categories()->count());
         }
     }

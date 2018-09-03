@@ -25,55 +25,28 @@ namespace FireflyIII\Services\Spectre\Request;
 use Exception;
 use FireflyIII\Exceptions\FireflyException;
 use FireflyIII\User;
+use GuzzleHttp\Client;
+use GuzzleHttp\Exception\GuzzleException;
 use Log;
-use Requests;
-use Requests_Response;
+use RuntimeException;
 
 /**
- * Class BunqRequest.
+ * Class SpectreRequest
  */
 abstract class SpectreRequest
 {
-    /** @var string */
-    protected $clientId = '';
-    /**
-     * @var int
-     */
+    /** @var int */
     protected $expiresAt = 0;
     /** @var string */
-    protected $serviceSecret = '';
+    private $appId;
     /** @var string */
     private $privateKey;
+    /** @var string */
+    private $secret;
     /** @var string */
     private $server;
     /** @var User */
     private $user;
-
-    /**
-     * SpectreRequest constructor.
-     *
-     * @param User $user
-     *
-     * @throws \Psr\Container\NotFoundExceptionInterface
-     * @throws \Psr\Container\ContainerExceptionInterface
-     * @throws \Illuminate\Container\EntryNotFoundException
-     */
-    public function __construct(User $user)
-    {
-        $this->user       = $user;
-        $this->server     = config('firefly.spectre.server');
-        $this->expiresAt  = time() + 180;
-        $privateKey       = app('preferences')->get('spectre_private_key', null);
-        $this->privateKey = $privateKey->data;
-
-        // set client ID
-        $clientId       = app('preferences')->get('spectre_client_id', null);
-        $this->clientId = $clientId->data;
-
-        // set service secret
-        $serviceSecret       = app('preferences')->get('spectre_service_secret', null);
-        $this->serviceSecret = $serviceSecret->data;
-    }
 
     /**
      *
@@ -81,22 +54,45 @@ abstract class SpectreRequest
     abstract public function call(): void;
 
     /**
+     * @codeCoverageIgnore
      * @return string
      */
-    public function getClientId(): string
+    public function getAppId(): string
     {
-        return $this->clientId;
+        return $this->appId;
     }
 
     /**
-     * @param string $clientId
+     * @codeCoverageIgnore
+     *
+     * @param string $appId
      */
-    public function setClientId(string $clientId): void
+    public function setAppId(string $appId): void
     {
-        $this->clientId = $clientId;
+        $this->appId = $appId;
     }
 
     /**
+     * @codeCoverageIgnore
+     * @return string
+     */
+    public function getSecret(): string
+    {
+        return $this->secret;
+    }
+
+    /**
+     * @codeCoverageIgnore
+     *
+     * @param string $secret
+     */
+    public function setSecret(string $secret): void
+    {
+        $this->secret = $secret;
+    }
+
+    /**
+     * @codeCoverageIgnore
      * @return string
      */
     public function getServer(): string
@@ -105,27 +101,37 @@ abstract class SpectreRequest
     }
 
     /**
-     * @return string
-     */
-    public function getServiceSecret(): string
-    {
-        return $this->serviceSecret;
-    }
-
-    /**
-     * @param string $serviceSecret
-     */
-    public function setServiceSecret(string $serviceSecret): void
-    {
-        $this->serviceSecret = $serviceSecret;
-    }
-
-    /**
+     * @codeCoverageIgnore
+     *
      * @param string $privateKey
      */
-    public function setPrivateKey(string $privateKey)
+    public function setPrivateKey(string $privateKey): void
     {
         $this->privateKey = $privateKey;
+    }
+
+    /**
+     * @param User $user
+     */
+    public function setUser(User $user): void
+    {
+        $this->user       = $user;
+        $this->server     = 'https://' . config('import.options.spectre.server');
+        $this->expiresAt  = time() + 180;
+        $privateKey       = app('preferences')->getForUser($user, 'spectre_private_key', null);
+        $this->privateKey = $privateKey->data;
+
+        // set client ID
+        $appId = app('preferences')->getForUser($user, 'spectre_app_id', null);
+        if (null !== $appId && '' !== (string)$appId->data) {
+            $this->appId = $appId->data;
+        }
+
+        // set service secret
+        $secret = app('preferences')->getForUser($user, 'spectre_secret', null);
+        if (null !== $secret && '' !== (string)$secret->data) {
+            $this->secret = $secret->data;
+        }
     }
 
     /**
@@ -139,10 +145,11 @@ abstract class SpectreRequest
      */
     protected function generateSignature(string $method, string $uri, string $data): string
     {
-        if (0 === strlen($this->privateKey)) {
+        if ('' === $this->privateKey) {
             throw new FireflyException('No private key present.');
         }
-        if ('get' === strtolower($method) || 'delete' === strtolower($method)) {
+        $method = strtolower($method);
+        if ('get' === $method || 'delete' === $method) {
             $data = '';
         }
         $toSign = $this->expiresAt . '|' . strtoupper($method) . '|' . $uri . '|' . $data . ''; // no file so no content there.
@@ -150,7 +157,7 @@ abstract class SpectreRequest
         $signature = '';
 
         // Sign the data
-        openssl_sign($toSign, $signature, $this->privateKey, OPENSSL_ALGO_SHA1);
+        openssl_sign($toSign, $signature, $this->privateKey, OPENSSL_ALGO_SHA256);
         $signature = base64_encode($signature);
 
         return $signature;
@@ -164,13 +171,13 @@ abstract class SpectreRequest
         $userAgent = sprintf('FireflyIII v%s', config('firefly.version'));
 
         return [
-            'Client-Id'      => $this->getClientId(),
-            'Service-Secret' => $this->getServiceSecret(),
-            'Accept'         => 'application/json',
-            'Content-type'   => 'application/json',
-            'Cache-Control'  => 'no-cache',
-            'User-Agent'     => $userAgent,
-            'Expires-at'     => $this->expiresAt,
+            'App-id'        => $this->getAppId(),
+            'Secret'        => $this->getSecret(),
+            'Accept'        => 'application/json',
+            'Content-type'  => 'application/json',
+            'Cache-Control' => 'no-cache',
+            'User-Agent'    => $userAgent,
+            'Expires-at'    => $this->expiresAt,
         ];
     }
 
@@ -184,28 +191,34 @@ abstract class SpectreRequest
      */
     protected function sendSignedSpectreGet(string $uri, array $data): array
     {
-        if (0 === strlen($this->server)) {
+        if ('' === $this->server) {
             throw new FireflyException('No Spectre server defined');
         }
 
         $headers              = $this->getDefaultHeaders();
-        $body                 = json_encode($data);
+        $sendBody             = json_encode($data); // OK
         $fullUri              = $this->server . $uri;
-        $signature            = $this->generateSignature('get', $fullUri, $body);
+        $signature            = $this->generateSignature('get', $fullUri, $sendBody);
         $headers['Signature'] = $signature;
 
         Log::debug('Final headers for spectre signed get request:', $headers);
         try {
-            $response = Requests::get($fullUri, $headers);
-        } catch (Exception $e) {
-            throw new FireflyException(sprintf('Request Exception: %s', $e->getMessage()));
+            $client = new Client;
+            $res    = $client->request('GET', $fullUri, ['headers' => $headers]);
+        } catch (GuzzleException|Exception $e) {
+            throw new FireflyException(sprintf('Guzzle Exception: %s', $e->getMessage()));
         }
-        $this->detectError($response);
-        $statusCode = (int)$response->status_code;
+        $statusCode = $res->getStatusCode();
+        try {
+            $returnBody = $res->getBody()->getContents();
+        } catch (RuntimeException $e) {
+            Log::error(sprintf('Could not get body from SpectreRequest::GET result: %s', $e->getMessage()));
+            $returnBody = '';
+        }
+        $this->detectError($returnBody, $statusCode);
 
-        $body                        = $response->body;
-        $array                       = json_decode($body, true);
-        $responseHeaders             = $response->headers->getAll();
+        $array                       = json_decode($returnBody, true);
+        $responseHeaders             = $res->getHeaders();
         $array['ResponseHeaders']    = $responseHeaders;
         $array['ResponseStatusCode'] = $statusCode;
 
@@ -213,6 +226,7 @@ abstract class SpectreRequest
             $message = $array['error_message'] ?? '(no message)';
             throw new FireflyException(sprintf('Error of class %s: %s', $array['error_class'], $message));
         }
+
 
         return $array;
     }
@@ -227,7 +241,7 @@ abstract class SpectreRequest
      */
     protected function sendSignedSpectrePost(string $uri, array $data): array
     {
-        if (0 === strlen($this->server)) {
+        if ('' === $this->server) {
             throw new FireflyException('No Spectre server defined');
         }
 
@@ -239,28 +253,39 @@ abstract class SpectreRequest
 
         Log::debug('Final headers for spectre signed POST request:', $headers);
         try {
-            $response = Requests::post($fullUri, $headers, $body);
-        } catch (Exception $e) {
-            throw new FireflyException(sprintf('Request Exception: %s', $e->getMessage()));
+            $client = new Client;
+            $res    = $client->request('POST', $fullUri, ['headers' => $headers, 'body' => $body]);
+        } catch (GuzzleException|Exception $e) {
+            throw new FireflyException(sprintf('Guzzle Exception: %s', $e->getMessage()));
         }
-        $this->detectError($response);
-        $body                        = $response->body;
+
+        try {
+            $body = $res->getBody()->getContents();
+        } catch (RuntimeException $e) {
+            Log::error(sprintf('Could not get body from SpectreRequest::POST result: %s', $e->getMessage()));
+            $body = '';
+        }
+
+        $statusCode = $res->getStatusCode();
+        $this->detectError($body, $statusCode);
+
         $array                       = json_decode($body, true);
-        $responseHeaders             = $response->headers->getAll();
+        $responseHeaders             = $res->getHeaders();
         $array['ResponseHeaders']    = $responseHeaders;
-        $array['ResponseStatusCode'] = $response->status_code;
+        $array['ResponseStatusCode'] = $statusCode;
 
         return $array;
     }
 
     /**
-     * @param Requests_Response $response
+     * @param string $body
+     *
+     * @param int    $statusCode
      *
      * @throws FireflyException
      */
-    private function detectError(Requests_Response $response): void
+    private function detectError(string $body, int $statusCode): void
     {
-        $body  = $response->body;
         $array = json_decode($body, true);
         if (isset($array['error_class'])) {
             $message    = $array['error_message'] ?? '(no message)';
@@ -273,11 +298,8 @@ abstract class SpectreRequest
             throw new FireflyException(sprintf('Error of class %s: %s', $errorClass, $message));
         }
 
-        $statusCode = (int)$response->status_code;
         if (200 !== $statusCode) {
-            throw new FireflyException(sprintf('Status code %d: %s', $statusCode, $response->body));
+            throw new FireflyException(sprintf('Status code %d: %s', $statusCode, $body));
         }
-
-        return;
     }
 }

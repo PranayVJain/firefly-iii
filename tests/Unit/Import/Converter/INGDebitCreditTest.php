@@ -32,9 +32,9 @@ use Tests\TestCase;
 class INGDebitCreditTest extends TestCase
 {
     /**
-     * @covers \FireflyIII\Import\Converter\INGDebitCredit::convert()
+     * @covers \FireflyIII\Import\Converter\INGDebitCredit
      */
-    public function testConvertAf()
+    public function testConvertAf(): void
     {
         $converter = new INGDebitCredit;
         $result    = $converter->convert('Af');
@@ -42,9 +42,9 @@ class INGDebitCreditTest extends TestCase
     }
 
     /**
-     * @covers \FireflyIII\Import\Converter\INGDebitCredit::convert()
+     * @covers \FireflyIII\Import\Converter\INGDebitCredit
      */
-    public function testConvertAnything()
+    public function testConvertAnything(): void
     {
         $converter = new INGDebitCredit;
         $result    = $converter->convert('9083jkdkj');
@@ -52,9 +52,9 @@ class INGDebitCreditTest extends TestCase
     }
 
     /**
-     * @covers \FireflyIII\Import\Converter\INGDebitCredit::convert()
+     * @covers \FireflyIII\Import\Converter\INGDebitCredit
      */
-    public function testConvertBij()
+    public function testConvertBij(): void
     {
         $converter = new INGDebitCredit;
         $result    = $converter->convert('Bij');

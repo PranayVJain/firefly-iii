@@ -32,6 +32,8 @@ use FireflyIII\Repositories\Account\AccountRepositoryInterface;
 class OpposingAccounts implements MapperInterface
 {
     /**
+     * Get map of opposing accounts.
+     *
      * @return array
      */
     public function getMap(): array
@@ -52,13 +54,13 @@ class OpposingAccounts implements MapperInterface
             $accountId = (int)$account->id;
             $name      = $account->name;
             $iban      = $account->iban ?? '';
-            if (strlen($iban) > 0) {
+            if (\strlen($iban) > 0) {
                 $name .= ' (' . $iban . ')';
             }
             $list[$accountId] = $name;
         }
         asort($list);
-        $list = [0 => trans('import.map_do_not_map')] + $list;
+        $list = [0 => (string)trans('import.map_do_not_map')] + $list;
 
         return $list;
     }

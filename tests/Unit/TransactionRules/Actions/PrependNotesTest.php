@@ -34,10 +34,9 @@ use Tests\TestCase;
 class PrependNotesTest extends TestCase
 {
     /**
-     * @covers \FireflyIII\TransactionRules\Actions\PrependNotes::__construct()
-     * @covers \FireflyIII\TransactionRules\Actions\PrependNotes::act()
+     * @covers \FireflyIII\TransactionRules\Actions\PrependNotes
      */
-    public function testAct()
+    public function testAct(): void
     {
         // give journal some notes.
         $journal   = TransactionJournal::inRandomOrder()->whereNull('deleted_at')->first();
@@ -63,10 +62,10 @@ class PrependNotesTest extends TestCase
     }
 
     /**
-     * @covers \FireflyIII\TransactionRules\Actions\PrependNotes::__construct()
-     * @covers \FireflyIII\TransactionRules\Actions\PrependNotes::act()
+     * @covers \FireflyIII\TransactionRules\Actions\PrependNotes()
+     * @covers \FireflyIII\TransactionRules\Actions\PrependNotes
      */
-    public function testActNewNote()
+    public function testActNewNote(): void
     {
         // give journal some notes.
         $journal = TransactionJournal::inRandomOrder()->whereNull('deleted_at')->first();

@@ -29,8 +29,9 @@ use FireflyIII\Models\TransactionJournal;
 use FireflyIII\Models\TransactionType;
 use FireflyIII\Repositories\Account\AccountRepositoryInterface;
 use FireflyIII\Repositories\Journal\JournalRepositoryInterface;
+use FireflyIII\Support\Http\Controllers\ModelInformation;
 use Illuminate\Http\Request;
-use Session;
+use Log;
 use View;
 
 /**
@@ -38,7 +39,9 @@ use View;
  */
 class ConvertController extends Controller
 {
-    /** @var JournalRepositoryInterface */
+    use ModelInformation;
+
+    /** @var JournalRepositoryInterface Journals and transactions overview */
     private $repository;
 
     /**
@@ -53,7 +56,7 @@ class ConvertController extends Controller
             function ($request, $next) {
                 $this->repository = app(JournalRepositoryInterface::class);
 
-                app('view')->share('title', trans('firefly.transactions'));
+                app('view')->share('title', (string)trans('firefly.transactions'));
                 app('view')->share('mainTitleIcon', 'fa-exchange');
 
                 return $next($request);
@@ -61,7 +64,10 @@ class ConvertController extends Controller
         );
     }
 
+
     /**
+     * Show overview of a to be converted transaction.
+     *
      * @param TransactionType    $destinationType
      * @param TransactionJournal $journal
      *
@@ -71,24 +77,26 @@ class ConvertController extends Controller
     {
         // @codeCoverageIgnoreStart
         if ($this->isOpeningBalance($journal)) {
+            Log::debug('This is an opening balance.');
+
             return $this->redirectToAccount($journal);
         }
         // @codeCoverageIgnoreEnd
         $positiveAmount = $this->repository->getJournalTotal($journal);
         $sourceType     = $journal->transactionType;
-        $subTitle       = trans('firefly.convert_to_' . $destinationType->type, ['description' => $journal->description]);
+        $subTitle       = (string)trans('firefly.convert_to_' . $destinationType->type, ['description' => $journal->description]);
         $subTitleIcon   = 'fa-exchange';
 
-        // cannot convert to its own type.
-        if ($sourceType->type === $destinationType->type) {
-            Session::flash('info', trans('firefly.convert_is_already_type_' . $destinationType->type));
+        if ($sourceType->type === $destinationType->type) { // cannot convert to its own type.
+            Log::debug('This is already a transaction of the expected type..');
+            session()->flash('info', (string)trans('firefly.convert_is_already_type_' . $destinationType->type));
 
             return redirect(route('transactions.show', [$journal->id]));
         }
 
-        // cannot convert split.
-        if ($journal->transactions()->count() > 2) {
-            Session::flash('error', trans('firefly.cannot_convert_split_journal'));
+        if ($journal->transactions()->count() > 2) { // cannot convert split.
+            Log::info('This journal has more than two transactions.');
+            session()->flash('error', (string)trans('firefly.cannot_convert_split_journal'));
 
             return redirect(route('transactions.show', [$journal->id]));
         }
@@ -98,39 +106,33 @@ class ConvertController extends Controller
         $destinationAccount = $this->repository->getJournalDestinationAccounts($journal)->first();
 
         return view(
-            'transactions.convert',
-            compact(
-                'sourceType',
-                'destinationType',
-                'journal',
-                'positiveAmount',
-                'sourceAccount',
-                'destinationAccount',
-                'sourceType',
-                'subTitle',
-                'subTitleIcon'
-            )
+            'transactions.convert', compact(
+                                      'sourceType', 'destinationType', 'journal', 'positiveAmount', 'sourceAccount', 'destinationAccount', 'sourceType',
+                                      'subTitle', 'subTitleIcon'
+                                  )
         );
-
-        // convert withdrawal to deposit requires a new source account ()
-        //  or to transfer requires
     }
 
+
     /**
-     * @param Request                    $request
-     * @param JournalRepositoryInterface $repository
-     * @param TransactionType            $destinationType
-     * @param TransactionJournal         $journal
+     * Do the conversion.
+     *
+     * @param Request            $request
+     * @param TransactionType    $destinationType
+     * @param TransactionJournal $journal
      *
      * @return \Illuminate\Http\RedirectResponse|\Illuminate\Routing\Redirector
      *
      * @throws FireflyException
-     * @throws FireflyException
+     * @SuppressWarnings(PHPMD.ExcessiveMethodLength)
+     * @SuppressWarnings(PHPMD.CyclomaticComplexity)
      */
-    public function postIndex(Request $request, JournalRepositoryInterface $repository, TransactionType $destinationType, TransactionJournal $journal)
+    public function postIndex(Request $request, TransactionType $destinationType, TransactionJournal $journal)
     {
         // @codeCoverageIgnoreStart
         if ($this->isOpeningBalance($journal)) {
+            Log::debug('Journal is opening balance, return to account.');
+
             return $this->redirectToAccount($journal);
         }
         // @codeCoverageIgnoreEnd
@@ -138,13 +140,15 @@ class ConvertController extends Controller
         $data = $request->all();
 
         if ($journal->transactionType->type === $destinationType->type) {
-            Session::flash('error', trans('firefly.convert_is_already_type_' . $destinationType->type));
+            Log::info('Journal is already of the desired type.');
+            session()->flash('error', (string)trans('firefly.convert_is_already_type_' . $destinationType->type));
 
             return redirect(route('transactions.show', [$journal->id]));
         }
 
         if ($journal->transactions()->count() > 2) {
-            Session::flash('error', trans('firefly.cannot_convert_split_journal'));
+            Log::info('Journal has more than two transactions.');
+            session()->flash('error', (string)trans('firefly.cannot_convert_split_journal'));
 
             return redirect(route('transactions.show', [$journal->id]));
         }
@@ -154,18 +158,21 @@ class ConvertController extends Controller
         $destination = $this->getDestinationAccount($journal, $destinationType, $data);
 
         // update the journal:
-        $errors = $repository->convert($journal, $destinationType, $source, $destination);
+        $errors = $this->repository->convert($journal, $destinationType, $source, $destination);
 
         if ($errors->count() > 0) {
             return redirect(route('transactions.convert.index', [strtolower($destinationType->type), $journal->id]))->withErrors($errors)->withInput();
         }
 
-        Session::flash('success', trans('firefly.converted_to_' . $destinationType->type));
+        session()->flash('success', (string)trans('firefly.converted_to_' . $destinationType->type));
 
         return redirect(route('transactions.show', [$journal->id]));
     }
 
+
     /**
+     * Get the destination account. Is complex.
+     *
      * @param TransactionJournal $journal
      * @param TransactionType    $destinationType
      * @param array              $data
@@ -173,8 +180,12 @@ class ConvertController extends Controller
      * @return Account
      *
      * @throws FireflyException
+     *
+     * @SuppressWarnings(PHPMD.ExcessiveMethodLength)
+     * @SuppressWarnings(PHPMD.CyclomaticComplexity)
      */
-    private function getDestinationAccount(TransactionJournal $journal, TransactionType $destinationType, array $data): Account
+    protected function getDestinationAccount(TransactionJournal $journal, TransactionType $destinationType, array $data
+    ): Account // helper for conversion. Get info from obj.
     {
         /** @var AccountRepositoryInterface $accountRepository */
         $accountRepository  = app(AccountRepositoryInterface::class);
@@ -220,7 +231,10 @@ class ConvertController extends Controller
         return $destination;
     }
 
+
     /**
+     * Get the source account.
+     *
      * @param TransactionJournal $journal
      * @param TransactionType    $destinationType
      * @param array              $data
@@ -228,8 +242,12 @@ class ConvertController extends Controller
      * @return Account
      *
      * @throws FireflyException
+     *
+     * @SuppressWarnings(PHPMD.ExcessiveMethodLength)
+     * @SuppressWarnings(PHPMD.CyclomaticComplexity)
      */
-    private function getSourceAccount(TransactionJournal $journal, TransactionType $destinationType, array $data): Account
+    protected function getSourceAccount(TransactionJournal $journal, TransactionType $destinationType, array $data
+    ): Account // helper for conversion. Get info from obj.
     {
         /** @var AccountRepositoryInterface $accountRepository */
         $accountRepository  = app(AccountRepositoryInterface::class);

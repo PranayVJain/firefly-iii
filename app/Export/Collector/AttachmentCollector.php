@@ -1,8 +1,7 @@
 <?php
-declare(strict_types=1);
 /**
  * AttachmentCollector.php
- * Copyright (c) 2017 thegrumpydictator@gmail.com
+ * Copyright (c) 2018 thegrumpydictator@gmail.com
  *
  * This file is part of Firefly III.
  *
@@ -20,6 +19,8 @@ declare(strict_types=1);
  * along with Firefly III. If not, see <http://www.gnu.org/licenses/>.
  */
 
+declare(strict_types=1);
+
 namespace FireflyIII\Export\Collector;
 
 use Carbon\Carbon;
@@ -33,18 +34,21 @@ use Storage;
 
 /**
  * Class AttachmentCollector.
+ *
+ * @deprecated
+ * @codeCoverageIgnore
  */
 class AttachmentCollector extends BasicCollector implements CollectorInterface
 {
-    /** @var Carbon */
+    /** @var Carbon The end date of the range. */
     private $end;
-    /** @var \Illuminate\Contracts\Filesystem\Filesystem */
+    /** @var \Illuminate\Contracts\Filesystem\Filesystem File system */
     private $exportDisk;
-    /** @var AttachmentRepositoryInterface */
+    /** @var AttachmentRepositoryInterface Attachment repository */
     private $repository;
-    /** @var Carbon */
+    /** @var Carbon Start date of range */
     private $start;
-    /** @var \Illuminate\Contracts\Filesystem\Filesystem */
+    /** @var \Illuminate\Contracts\Filesystem\Filesystem Disk with uploads on it */
     private $uploadDisk;
 
     /**
@@ -62,6 +66,8 @@ class AttachmentCollector extends BasicCollector implements CollectorInterface
     }
 
     /**
+     * Run the routine.
+     *
      * @return bool
      */
     public function run(): bool
@@ -78,6 +84,8 @@ class AttachmentCollector extends BasicCollector implements CollectorInterface
     }
 
     /**
+     * Set the start and end date.
+     *
      * @param Carbon $start
      * @param Carbon $end
      */
@@ -87,24 +95,33 @@ class AttachmentCollector extends BasicCollector implements CollectorInterface
         $this->end   = $end;
     }
 
+    /** @noinspection MultipleReturnStatementsInspection */
     /**
+     * Export attachments.
+     *
      * @param Attachment $attachment
      *
      * @return bool
      */
     private function exportAttachment(Attachment $attachment): bool
     {
-        $file = $attachment->fileName();
+        $file      = $attachment->fileName();
+        $decrypted = false;
         if ($this->uploadDisk->exists($file)) {
             try {
-                $decrypted  = Crypt::decrypt($this->uploadDisk->get($file));
-                $exportFile = $this->exportFileName($attachment);
-                $this->exportDisk->put($exportFile, $decrypted);
-                $this->getEntries()->push($exportFile);
+                $decrypted = Crypt::decrypt($this->uploadDisk->get($file));
             } catch (DecryptException $e) {
                 Log::error('Catchable error: could not decrypt attachment #' . $attachment->id . ' because: ' . $e->getMessage());
+
+                return false;
             }
         }
+        if (false === $decrypted) {
+            return false;
+        }
+        $exportFile = $this->exportFileName($attachment);
+        $this->exportDisk->put($exportFile, $decrypted);
+        $this->getEntries()->push($exportFile);
 
         return true;
     }
@@ -122,6 +139,8 @@ class AttachmentCollector extends BasicCollector implements CollectorInterface
     }
 
     /**
+     * Get the attachments.
+     *
      * @return Collection
      */
     private function getAttachments(): Collection

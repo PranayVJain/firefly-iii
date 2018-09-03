@@ -36,18 +36,32 @@ use Tests\TestCase;
 class RedirectIf2FAAuthenticatedTest extends TestCase
 {
     /**
-     * @covers \FireflyIII\Http\Middleware\RedirectIfTwoFactorAuthenticated::handle
+     * Set up test
      */
-    public function testMiddleware()
+    public function setUp(): void
+    {
+        parent::setUp();
+
+        Route::middleware(RedirectIfTwoFactorAuthenticated::class)->any(
+            '/_test/authenticate', function () {
+            return 'OK';
+        }
+        );
+    }
+
+    /**
+     * @covers \FireflyIII\Http\Middleware\RedirectIfTwoFactorAuthenticated
+     */
+    public function testMiddleware(): void
     {
         $response = $this->get('/_test/authenticate');
         $this->assertEquals(Response::HTTP_OK, $response->getStatusCode());
     }
 
     /**
-     * @covers \FireflyIII\Http\Middleware\RedirectIfTwoFactorAuthenticated::handle
+     * @covers \FireflyIII\Http\Middleware\RedirectIfTwoFactorAuthenticated
      */
-    public function testMiddlewareAuthenticated()
+    public function testMiddlewareAuthenticated(): void
     {
         // pref for has 2fa is true
         $preference       = new Preference;
@@ -69,26 +83,12 @@ class RedirectIf2FAAuthenticatedTest extends TestCase
     }
 
     /**
-     * @covers \FireflyIII\Http\Middleware\RedirectIfTwoFactorAuthenticated::handle
+     * @covers \FireflyIII\Http\Middleware\RedirectIfTwoFactorAuthenticated
      */
-    public function testMiddlewareLightAuth()
+    public function testMiddlewareLightAuth(): void
     {
         $this->be($this->user());
         $response = $this->get('/_test/authenticate');
         $this->assertEquals(Response::HTTP_OK, $response->getStatusCode());
-    }
-
-    /**
-     * Set up test
-     */
-    protected function setUp()
-    {
-        parent::setUp();
-
-        Route::middleware(RedirectIfTwoFactorAuthenticated::class)->any(
-            '/_test/authenticate', function () {
-            return 'OK';
-        }
-        );
     }
 }

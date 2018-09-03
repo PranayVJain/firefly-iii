@@ -22,56 +22,48 @@ declare(strict_types=1);
 
 namespace FireflyIII\Import\Specifics;
 
-use Log;
-
 /**
  * Class RabobankDescription.
+ *
+ * @codeCoverageIgnore
+ * @deprecated
  */
 class RabobankDescription implements SpecificInterface
 {
     /**
+     * Description of this specific.
+     *
      * @return string
+     * @codeCoverageIgnore
      */
     public static function getDescription(): string
     {
-        return 'Fixes possible problems with Rabobank descriptions.';
+        return 'import.specific_pres_descr';
     }
 
     /**
+     * Name of this specific.
+     *
      * @return string
+     * @codeCoverageIgnore
      */
     public static function getName(): string
     {
-        return 'Rabobank description';
+        return 'import.specific_rabo_name';
     }
 
     /**
+     * Run the specific.
+     *
      * @param array $row
      *
      * @return array
+     *
+     * @SuppressWarnings(PHPMD.CyclomaticComplexity)
      */
     public function run(array $row): array
     {
         $row = array_values($row);
-        Log::debug(sprintf('Now in RabobankSpecific::run(). Row has %d columns', count($row)));
-        $oppositeAccount = isset($row[5]) ? trim($row[5]) : '';
-        $oppositeName    = isset($row[6]) ? trim($row[6]) : '';
-        $alternateName   = isset($row[10]) ? trim($row[10]) : '';
-
-        if (strlen($oppositeAccount) < 1 && strlen($oppositeName) < 1) {
-            Log::debug(
-                sprintf(
-                    'Rabobank specific: Opposite account and opposite name are' .
-                    ' both empty. Will use "%s" (from description) instead',
-                    $alternateName
-                )
-            );
-            $row[6]  = $alternateName;
-            $row[10] = '';
-        }
-        if (!(strlen($oppositeAccount) < 1 && strlen($oppositeName) < 1)) {
-            Log::debug('Rabobank specific: either opposite account or name are filled.');
-        }
 
         return $row;
     }

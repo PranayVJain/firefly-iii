@@ -22,23 +22,28 @@ declare(strict_types=1);
 
 namespace FireflyIII\Http\Controllers\Chart;
 
+use Carbon\Carbon;
 use FireflyIII\Generator\Chart\Basic\GeneratorInterface;
 use FireflyIII\Http\Controllers\Controller;
 use FireflyIII\Models\PiggyBank;
 use FireflyIII\Models\PiggyBankEvent;
 use FireflyIII\Repositories\PiggyBank\PiggyBankRepositoryInterface;
 use FireflyIII\Support\CacheProperties;
+use FireflyIII\Support\Http\Controllers\DateCalculation;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Collection;
 
 /**
  * Class PiggyBankController.
  */
 class PiggyBankController extends Controller
 {
-    /** @var GeneratorInterface */
+    use DateCalculation;
+    /** @var GeneratorInterface Chart generation methods. */
     protected $generator;
 
     /**
-     *
+     * PiggyBankController constructor.
      */
     public function __construct()
     {
@@ -50,12 +55,17 @@ class PiggyBankController extends Controller
     /**
      * Shows the piggy bank history.
      *
+     * TODO this chart is not multi-currency aware.
+     *
      * @param PiggyBankRepositoryInterface $repository
      * @param PiggyBank                    $piggyBank
      *
-     * @return \Symfony\Component\HttpFoundation\Response
+     * @return JsonResponse
+     *
+     * @SuppressWarnings(PHPMD.CyclomaticComplexity)
+     * @SuppressWarnings(PHPMD.ExcessiveMethodLength)
      */
-    public function history(PiggyBankRepositoryInterface $repository, PiggyBank $piggyBank)
+    public function history(PiggyBankRepositoryInterface $repository, PiggyBank $piggyBank): JsonResponse
     {
         // chart properties for cache:
         $cache = new CacheProperties;
@@ -64,17 +74,44 @@ class PiggyBankController extends Controller
         if ($cache->has()) {
             return response()->json($cache->get()); // @codeCoverageIgnore
         }
+        $set = $repository->getEvents($piggyBank);
+        $set = $set->reverse();
 
-        $set       = $repository->getEvents($piggyBank);
-        $set       = $set->reverse();
+        // get first event or start date of piggy bank or today
+        $startDate = $piggyBank->start_date ?? new Carbon;
+
+        /** @var PiggyBankEvent $first */
+        $firstEvent = $set->first();
+        $firstDate  = null === $firstEvent ? new Carbon : $firstEvent->date;
+
+        // which ever is older:
+        $oldest = $startDate->lt($firstDate) ? $startDate : $firstDate;
+        $today  = new Carbon;
+        // depending on diff, do something with range of chart.
+        $step = $this->calculateStep($oldest, $today);
+
         $chartData = [];
-        $sum       = '0';
-        /** @var PiggyBankEvent $entry */
-        foreach ($set as $entry) {
-            $label             = $entry->date->formatLocalized((string)trans('config.month_and_day'));
-            $sum               = bcadd($sum, $entry->amount);
-            $chartData[$label] = $sum;
+        while ($oldest <= $today) {
+            /** @var Collection $filtered */
+            $filtered          = $set->filter(
+                function (PiggyBankEvent $event) use ($oldest) {
+                    return $event->date->lte($oldest);
+                }
+            );
+            $currentSum        = $filtered->sum('amount');
+            $label             = $oldest->formatLocalized((string)trans('config.month_and_day'));
+            $chartData[$label] = $currentSum;
+            $oldest            = app('navigation')->addPeriod($oldest, $step, 0);
         }
+        /** @var Collection $finalFiltered */
+        $finalFiltered          = $set->filter(
+            function (PiggyBankEvent $event) use ($today) {
+                return $event->date->lte($today);
+            }
+        );
+        $finalSum               = $finalFiltered->sum('amount');
+        $finalLabel             = $today->formatLocalized((string)trans('config.month_and_day'));
+        $chartData[$finalLabel] = $finalSum;
 
         $data = $this->generator->singleSet($piggyBank->name, $chartData);
         $cache->store($data);

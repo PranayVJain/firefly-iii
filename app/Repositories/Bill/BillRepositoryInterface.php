@@ -24,7 +24,6 @@ namespace FireflyIII\Repositories\Bill;
 
 use Carbon\Carbon;
 use FireflyIII\Models\Bill;
-use FireflyIII\Models\TransactionJournal;
 use FireflyIII\User;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
@@ -90,6 +89,17 @@ interface BillRepositoryInterface
     public function getBillsPaidInRange(Carbon $start, Carbon $end): string;
 
     /**
+     * Get the total amount of money paid for the users active bills in the date range given,
+     * grouped per currency.
+     *
+     * @param Carbon $start
+     * @param Carbon $end
+     *
+     * @return array
+     */
+    public function getBillsPaidInRangePerCurrency(Carbon $start, Carbon $end): array;
+
+    /**
      * Get the total amount of money due for the users active bills in the date range given.
      *
      * @param Carbon $start
@@ -98,6 +108,34 @@ interface BillRepositoryInterface
      * @return string
      */
     public function getBillsUnpaidInRange(Carbon $start, Carbon $end): string;
+
+    /**
+     * Get the total amount of money due for the users active bills in the date range given.
+     *
+     * @param Carbon $start
+     * @param Carbon $end
+     *
+     * @return array
+     */
+    public function getBillsUnpaidInRangePerCurrency(Carbon $start, Carbon $end): array;
+
+    /**
+     * Get all bills with these ID's.
+     *
+     * @param array $billIds
+     *
+     * @return Collection
+     */
+    public function getByIds(array $billIds): Collection;
+
+    /**
+     * Get text or return empty string.
+     *
+     * @param Bill $bill
+     *
+     * @return string
+     */
+    public function getNoteText(Bill $bill): string;
 
     /**
      * @param Bill $bill
@@ -134,11 +172,25 @@ interface BillRepositoryInterface
     public function getPayDatesInRange(Bill $bill, Carbon $start, Carbon $end): Collection;
 
     /**
+     * Return all rules for one bill
+     *
      * @param Bill $bill
      *
      * @return Collection
      */
-    public function getPossiblyRelatedJournals(Bill $bill): Collection;
+    public function getRulesForBill(Bill $bill): Collection;
+
+    /**
+     * Return all rules related to the bills in the collection, in an associative array:
+     * 5= billid
+     *
+     * 5 => [['id' => 1, 'title' => 'Some rule'],['id' => 2, 'title' => 'Some other rule']]
+     *
+     * @param Collection $collection
+     *
+     * @return array
+     */
+    public function getRulesForBills(Collection $collection): array;
 
     /**
      * @param Bill   $bill
@@ -147,6 +199,14 @@ interface BillRepositoryInterface
      * @return string
      */
     public function getYearAverage(Bill $bill, Carbon $date): string;
+
+    /**
+     * Link a set of journals to a bill.
+     *
+     * @param Bill       $bill
+     * @param Collection $journals
+     */
+    public function linkCollectionToBill(Bill $bill, Collection $journals): void;
 
     /**
      * Given a bill and a date, this method will tell you at which moment this bill expects its next
@@ -166,14 +226,6 @@ interface BillRepositoryInterface
      * @return \Carbon\Carbon
      */
     public function nextExpectedMatch(Bill $bill, Carbon $date): Carbon;
-
-    /**
-     * @param Bill               $bill
-     * @param TransactionJournal $journal
-     *
-     * @return bool
-     */
-    public function scan(Bill $bill, TransactionJournal $journal): bool;
 
     /**
      * @param User $user

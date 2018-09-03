@@ -23,6 +23,7 @@ declare(strict_types=1);
 namespace FireflyIII\Services\Spectre\Request;
 
 use FireflyIII\Services\Spectre\Object\Customer;
+use Log;
 
 /**
  * Class NewCustomerRequest
@@ -34,21 +35,19 @@ class NewCustomerRequest extends SpectreRequest
 
     /**
      * @throws \FireflyIII\Exceptions\FireflyException
-     * @throws \FireflyIII\Services\Spectre\Exception\SpectreException
      */
     public function call(): void
     {
-        $data     = [
+        $data = [
             'data' => [
                 'identifier' => 'default_ff3_customer',
             ],
         ];
-        $uri      = '/api/v3/customers/';
+        $uri  = '/api/v4/customers/';
+        Log::debug(sprintf('Going to call %s with info:', $uri), $data);
         $response = $this->sendSignedSpectrePost($uri, $data);
         // create customer:
         $this->customer = new Customer($response['data']);
-
-        return;
     }
 
     /**

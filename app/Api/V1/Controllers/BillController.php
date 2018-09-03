@@ -1,5 +1,5 @@
 <?php
-declare(strict_types=1);
+
 /**
  * BillController.php
  * Copyright (c) 2018 thegrumpydictator@gmail.com
@@ -20,6 +20,8 @@ declare(strict_types=1);
  * along with Firefly III. If not, see <http://www.gnu.org/licenses/>.
  */
 
+declare(strict_types=1);
+
 namespace FireflyIII\Api\V1\Controllers;
 
 use FireflyIII\Api\V1\Requests\BillRequest;
@@ -27,6 +29,8 @@ use FireflyIII\Exceptions\FireflyException;
 use FireflyIII\Models\Bill;
 use FireflyIII\Repositories\Bill\BillRepositoryInterface;
 use FireflyIII\Transformers\BillTransformer;
+use FireflyIII\User;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use League\Fractal\Manager;
@@ -34,29 +38,29 @@ use League\Fractal\Pagination\IlluminatePaginatorAdapter;
 use League\Fractal\Resource\Collection as FractalCollection;
 use League\Fractal\Resource\Item;
 use League\Fractal\Serializer\JsonApiSerializer;
-use Preferences;
 
 /**
- * Class BillController
+ * Class BillController.
  */
 class BillController extends Controller
 {
-    /** @var BillRepositoryInterface */
+    /** @var BillRepositoryInterface The bill repository */
     private $repository;
 
     /**
      * BillController constructor.
-     *
-     * @throws \FireflyIII\Exceptions\FireflyException
      */
     public function __construct()
     {
         parent::__construct();
         $this->middleware(
             function ($request, $next) {
+                /** @var User $admin */
+                $admin = auth()->user();
+
                 /** @var BillRepositoryInterface repository */
                 $this->repository = app(BillRepositoryInterface::class);
-                $this->repository->setUser(auth()->user());
+                $this->repository->setUser($admin);
 
                 return $next($request);
             }
@@ -66,11 +70,11 @@ class BillController extends Controller
     /**
      * Remove the specified resource from storage.
      *
-     * @param  \FireflyIII\Models\Bill $bill
+     * @param  Bill $bill
      *
-     * @return \Illuminate\Http\Response
+     * @return JsonResponse
      */
-    public function delete(Bill $bill)
+    public function delete(Bill $bill): JsonResponse
     {
         $this->repository->destroy($bill);
 
@@ -82,11 +86,11 @@ class BillController extends Controller
      *
      * @param Request $request
      *
-     * @return \Illuminate\Http\JsonResponse
+     * @return JsonResponse
      */
-    public function index(Request $request)
+    public function index(Request $request): JsonResponse
     {
-        $pageSize  = (int)Preferences::getForUser(auth()->user(), 'listPageSize', 50)->data;
+        $pageSize  = (int)app('preferences')->getForUser(auth()->user(), 'listPageSize', 50)->data;
         $paginator = $this->repository->getPaginator($pageSize);
         /** @var Collection $bills */
         $bills = $paginator->getCollection();
@@ -103,12 +107,14 @@ class BillController extends Controller
 
 
     /**
+     * Show the specified bill.
+     *
      * @param Request $request
      * @param Bill    $bill
      *
-     * @return \Illuminate\Http\JsonResponse
+     * @return JsonResponse
      */
-    public function show(Request $request, Bill $bill)
+    public function show(Request $request, Bill $bill): JsonResponse
     {
         $manager = new Manager();
         // add include parameter:
@@ -124,35 +130,39 @@ class BillController extends Controller
     }
 
     /**
+     * Store a bill.
+     *
      * @param BillRequest $request
      *
-     * @return \Illuminate\Http\JsonResponse
+     * @return JsonResponse
      * @throws FireflyException
      */
-    public function store(BillRequest $request)
+    public function store(BillRequest $request): JsonResponse
     {
-        $bill    = $this->repository->store($request->getAll());
-        if(null !== $bill) {
-        $manager = new Manager();
-        $baseUrl = $request->getSchemeAndHttpHost() . '/api/v1';
-        $manager->setSerializer(new JsonApiSerializer($baseUrl));
+        $bill = $this->repository->store($request->getAll());
+        if (null !== $bill) {
+            $manager = new Manager();
+            $baseUrl = $request->getSchemeAndHttpHost() . '/api/v1';
+            $manager->setSerializer(new JsonApiSerializer($baseUrl));
 
-        $resource = new Item($bill, new BillTransformer($this->parameters), 'bills');
+            $resource = new Item($bill, new BillTransformer($this->parameters), 'bills');
 
-        return response()->json($manager->createData($resource)->toArray())->header('Content-Type', 'application/vnd.api+json');
+            return response()->json($manager->createData($resource)->toArray())->header('Content-Type', 'application/vnd.api+json');
         }
-        throw new FireflyException('Could not store new bill.');
+        throw new FireflyException('Could not store new bill.'); // @codeCoverageIgnore
 
     }
 
 
     /**
+     * Update a bill.
+     *
      * @param BillRequest $request
      * @param Bill        $bill
      *
-     * @return \Illuminate\Http\JsonResponse
+     * @return JsonResponse
      */
-    public function update(BillRequest $request, Bill $bill)
+    public function update(BillRequest $request, Bill $bill): JsonResponse
     {
         $data    = $request->getAll();
         $bill    = $this->repository->update($bill, $data);

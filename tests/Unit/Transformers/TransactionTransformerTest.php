@@ -24,7 +24,8 @@ declare(strict_types=1);
 namespace Tests\Unit\Transformers;
 
 
-use FireflyIII\Helpers\Collector\JournalCollector;
+use FireflyIII\Exceptions\FireflyException;
+use FireflyIII\Helpers\Collector\TransactionCollector;
 use FireflyIII\Helpers\Filter\NegativeAmountFilter;
 use FireflyIII\Helpers\Filter\PositiveAmountFilter;
 use FireflyIII\Models\Account;
@@ -47,10 +48,9 @@ class TransactionTransformerTest extends TestCase
     /**
      * Basic journal (withdrawal)
      *
-     * @covers \FireflyIII\Transformers\TransactionTransformer::transform
-     * throws \FireflyIII\Exceptions\FireflyException
+     * @covers \FireflyIII\Transformers\TransactionTransformer
      */
-    public function testBasic()
+    public function testBasic(): void
     {
         // make new asset account:
         $asset = Account::create(
@@ -103,7 +103,11 @@ class TransactionTransformerTest extends TestCase
         // use collector to get it:
         $transaction = $this->getTransaction($journal);
         $transformer = new TransactionTransformer(new ParameterBag);
-        $result      = $transformer->transform($transaction);
+        try {
+            $result = $transformer->transform($transaction);
+        } catch (FireflyException $e) {
+            $this->assertTrue(false, $e->getMessage());
+        }
         // basic fields:
         $this->assertEquals($journal->id, $result['journal_id']);
         $this->assertEquals('Withdrawal', $result['type']);
@@ -131,10 +135,10 @@ class TransactionTransformerTest extends TestCase
     /**
      * Basic journal (withdrawal)
      *
-     * @covers \FireflyIII\Transformers\TransactionTransformer::transform
+     * @covers \FireflyIII\Transformers\TransactionTransformer
      * throws \FireflyIII\Exceptions\FireflyException
      */
-    public function testDeposit()
+    public function testDeposit(): void
     {
         // make new asset account:
         $asset = Account::create(
@@ -187,7 +191,11 @@ class TransactionTransformerTest extends TestCase
         // use collector to get it:
         $transaction = $this->getTransaction($journal);
         $transformer = new TransactionTransformer(new ParameterBag);
-        $result      = $transformer->transform($transaction);
+        try {
+            $result = $transformer->transform($transaction);
+        } catch (FireflyException $e) {
+            $this->assertTrue(false, $e->getMessage());
+        }
         // basic fields:
         $this->assertEquals($journal->id, $result['journal_id']);
         $this->assertEquals('Deposit', $result['type']);
@@ -215,10 +223,10 @@ class TransactionTransformerTest extends TestCase
     /**
      * Deposit cannot have a budget
      *
-     * @covers \FireflyIII\Transformers\TransactionTransformer::transform
+     * @covers \FireflyIII\Transformers\TransactionTransformer
      * throws \FireflyIII\Exceptions\FireflyException
      */
-    public function testDepositBudget()
+    public function testDepositBudget(): void
     {
         // make new asset account:
         $asset = Account::create(
@@ -272,7 +280,7 @@ class TransactionTransformerTest extends TestCase
         $budget = Budget::create(
             [
                 'user_id' => $this->user()->id,
-                'name'    => 'Random budget #' . random_int(1, 1000),
+                'name'    => 'Random budget #' . random_int(1, 10000),
                 'active'  => 1,
             ]
         );
@@ -281,7 +289,11 @@ class TransactionTransformerTest extends TestCase
         // use collector to get it:
         $transaction = $this->getTransaction($journal);
         $transformer = new TransactionTransformer(new ParameterBag);
-        $result      = $transformer->transform($transaction);
+        try {
+            $result = $transformer->transform($transaction);
+        } catch (FireflyException $e) {
+            $this->assertTrue(false, $e->getMessage());
+        }
         // basic fields:
         $this->assertEquals($journal->id, $result['journal_id']);
         $this->assertEquals('Deposit', $result['type']);
@@ -308,10 +320,10 @@ class TransactionTransformerTest extends TestCase
     /**
      * Basic journal (withdrawal) with a foreign amount.
      *
-     * @covers \FireflyIII\Transformers\TransactionTransformer::transform
+     * @covers \FireflyIII\Transformers\TransactionTransformer
      * throws \FireflyIII\Exceptions\FireflyException
      */
-    public function testForeignAmount()
+    public function testForeignAmount(): void
     {
         // make new asset account:
         $asset = Account::create(
@@ -368,7 +380,11 @@ class TransactionTransformerTest extends TestCase
         // use collector to get it:
         $transaction = $this->getTransaction($journal);
         $transformer = new TransactionTransformer(new ParameterBag);
-        $result      = $transformer->transform($transaction);
+        try {
+            $result = $transformer->transform($transaction);
+        } catch (FireflyException $e) {
+            $this->assertTrue(false, $e->getMessage());
+        }
         // basic fields:
         $this->assertEquals($journal->id, $result['journal_id']);
         $this->assertEquals('Withdrawal', $result['type']);
@@ -400,10 +416,10 @@ class TransactionTransformerTest extends TestCase
     /**
      * Basic journal (withdrawal) with a budget
      *
-     * @covers \FireflyIII\Transformers\TransactionTransformer::transform
+     * @covers \FireflyIII\Transformers\TransactionTransformer
      * throws \FireflyIII\Exceptions\FireflyException
      */
-    public function testJournalBudget()
+    public function testJournalBudget(): void
     {
         // make new asset account:
         $asset = Account::create(
@@ -448,7 +464,7 @@ class TransactionTransformerTest extends TestCase
         $budget = Budget::create(
             [
                 'user_id' => $this->user()->id,
-                'name'    => 'Random budget #' . random_int(1, 1000),
+                'name'    => 'Random budget #' . random_int(1, 10000),
                 'active'  => 1,
             ]
         );
@@ -467,7 +483,11 @@ class TransactionTransformerTest extends TestCase
         // use collector to get it:
         $transaction = $this->getTransaction($journal);
         $transformer = new TransactionTransformer(new ParameterBag);
-        $result      = $transformer->transform($transaction);
+        try {
+            $result = $transformer->transform($transaction);
+        } catch (FireflyException $e) {
+            $this->assertTrue(false, $e->getMessage());
+        }
         // basic fields:
         $this->assertEquals($journal->id, $result['journal_id']);
         $this->assertEquals('Withdrawal', $result['type']);
@@ -498,10 +518,10 @@ class TransactionTransformerTest extends TestCase
     /**
      * Basic journal (withdrawal) with a category
      *
-     * @covers \FireflyIII\Transformers\TransactionTransformer::transform
+     * @covers \FireflyIII\Transformers\TransactionTransformer
      * throws \FireflyIII\Exceptions\FireflyException
      */
-    public function testJournalCategory()
+    public function testJournalCategory(): void
     {
         // make new asset account:
         $asset = Account::create(
@@ -546,7 +566,7 @@ class TransactionTransformerTest extends TestCase
         $category = Category::create(
             [
                 'user_id' => $this->user()->id,
-                'name'    => 'Random category #' . random_int(1, 1000),
+                'name'    => 'Random category #' . random_int(1, 10000),
                 'active'  => 1,
             ]
         );
@@ -565,7 +585,11 @@ class TransactionTransformerTest extends TestCase
         // use collector to get it:
         $transaction = $this->getTransaction($journal);
         $transformer = new TransactionTransformer(new ParameterBag);
-        $result      = $transformer->transform($transaction);
+        try {
+            $result = $transformer->transform($transaction);
+        } catch (FireflyException $e) {
+            $this->assertTrue(false, $e->getMessage());
+        }
         // basic fields:
         $this->assertEquals($journal->id, $result['journal_id']);
         $this->assertEquals('Withdrawal', $result['type']);
@@ -596,10 +620,10 @@ class TransactionTransformerTest extends TestCase
     /**
      * Basic journal (opening balance)
      *
-     * @covers \FireflyIII\Transformers\TransactionTransformer::transform
+     * @covers \FireflyIII\Transformers\TransactionTransformer
      * throws \FireflyIII\Exceptions\FireflyException
      */
-    public function testOpeningBalanceNeg()
+    public function testOpeningBalanceNeg(): void
     {
         // make new asset account:
         $asset = Account::create(
@@ -652,7 +676,11 @@ class TransactionTransformerTest extends TestCase
         // use collector to get it:
         $transaction = $this->getTransaction($journal);
         $transformer = new TransactionTransformer(new ParameterBag);
-        $result      = $transformer->transform($transaction);
+        try {
+            $result = $transformer->transform($transaction);
+        } catch (FireflyException $e) {
+            $this->assertTrue(false, $e->getMessage());
+        }
         // basic fields:
         $this->assertEquals($journal->id, $result['journal_id']);
         $this->assertEquals('Opening balance', $result['type']);
@@ -681,10 +709,10 @@ class TransactionTransformerTest extends TestCase
     /**
      * Basic journal (opening balance)
      *
-     * @covers \FireflyIII\Transformers\TransactionTransformer::transform
+     * @covers \FireflyIII\Transformers\TransactionTransformer
      * throws \FireflyIII\Exceptions\FireflyException
      */
-    public function testOpeningBalancePos()
+    public function testOpeningBalancePos(): void
     {
         // make new asset account:
         $asset = Account::create(
@@ -738,7 +766,11 @@ class TransactionTransformerTest extends TestCase
         // use collector to get it:
         $transaction = $this->getTransaction($journal);
         $transformer = new TransactionTransformer(new ParameterBag);
-        $result      = $transformer->transform($transaction);
+        try {
+            $result = $transformer->transform($transaction);
+        } catch (FireflyException $e) {
+            $this->assertTrue(false, $e->getMessage());
+        }
         // basic fields:
         $this->assertEquals($journal->id, $result['journal_id']);
         $this->assertEquals('Opening balance', $result['type']);
@@ -766,10 +798,10 @@ class TransactionTransformerTest extends TestCase
     /**
      * Basic journal (reconciliation)
      *
-     * @covers \FireflyIII\Transformers\TransactionTransformer::transform
+     * @covers \FireflyIII\Transformers\TransactionTransformer
      * throws \FireflyIII\Exceptions\FireflyException
      */
-    public function testReconciliationNeg()
+    public function testReconciliationNeg(): void
     {
         // make new asset account:
         $asset = Account::create(
@@ -823,7 +855,11 @@ class TransactionTransformerTest extends TestCase
         // use collector to get it:
         $transaction = $this->getTransaction($journal);
         $transformer = new TransactionTransformer(new ParameterBag);
-        $result      = $transformer->transform($transaction);
+        try {
+            $result = $transformer->transform($transaction);
+        } catch (FireflyException $e) {
+            $this->assertTrue(false, $e->getMessage());
+        }
         // basic fields:
         $this->assertEquals($journal->id, $result['journal_id']);
         $this->assertEquals('Reconciliation', $result['type']);
@@ -851,10 +887,10 @@ class TransactionTransformerTest extends TestCase
     /**
      * Basic journal (reconciliation)
      *
-     * @covers \FireflyIII\Transformers\TransactionTransformer::transform
+     * @covers \FireflyIII\Transformers\TransactionTransformer
      * throws \FireflyIII\Exceptions\FireflyException
      */
-    public function testReconciliationPos()
+    public function testReconciliationPos(): void
     {
         // make new asset account:
         $asset = Account::create(
@@ -908,7 +944,11 @@ class TransactionTransformerTest extends TestCase
         // use collector to get it:
         $transaction = $this->getTransaction($journal);
         $transformer = new TransactionTransformer(new ParameterBag);
-        $result      = $transformer->transform($transaction);
+        try {
+            $result = $transformer->transform($transaction);
+        } catch (FireflyException $e) {
+            $this->assertTrue(false, $e->getMessage());
+        }
         // basic fields:
         $this->assertEquals($journal->id, $result['journal_id']);
         $this->assertEquals('Reconciliation', $result['type']);
@@ -936,10 +976,10 @@ class TransactionTransformerTest extends TestCase
     /**
      * Basic journal (withdrawal) with budget on the transactions.
      *
-     * @covers \FireflyIII\Transformers\TransactionTransformer::transform
+     * @covers \FireflyIII\Transformers\TransactionTransformer
      * throws \FireflyIII\Exceptions\FireflyException
      */
-    public function testTransactionBudget()
+    public function testTransactionBudget(): void
     {
         // make new asset account:
         $asset = Account::create(
@@ -984,7 +1024,7 @@ class TransactionTransformerTest extends TestCase
         $budget = Budget::create(
             [
                 'user_id' => $this->user()->id,
-                'name'    => 'Random budget #' . random_int(1, 1000),
+                'name'    => 'Random budget #' . random_int(1, 10000),
                 'active'  => 1,
             ]
         );
@@ -1005,7 +1045,11 @@ class TransactionTransformerTest extends TestCase
         // use collector to get it:
         $transaction = $this->getTransaction($journal);
         $transformer = new TransactionTransformer(new ParameterBag);
-        $result      = $transformer->transform($transaction);
+        try {
+            $result = $transformer->transform($transaction);
+        } catch (FireflyException $e) {
+            $this->assertTrue(false, $e->getMessage());
+        }
         // basic fields:
         $this->assertEquals($journal->id, $result['journal_id']);
         $this->assertEquals('Withdrawal', $result['type']);
@@ -1036,10 +1080,10 @@ class TransactionTransformerTest extends TestCase
     /**
      * Basic journal (withdrawal) with a category on the transactions
      *
-     * @covers \FireflyIII\Transformers\TransactionTransformer::transform
+     * @covers \FireflyIII\Transformers\TransactionTransformer
      * throws \FireflyIII\Exceptions\FireflyException
      */
-    public function testTransactionCategory()
+    public function testTransactionCategory(): void
     {
         // make new asset account:
         $asset = Account::create(
@@ -1084,7 +1128,7 @@ class TransactionTransformerTest extends TestCase
         $category = Category::create(
             [
                 'user_id' => $this->user()->id,
-                'name'    => 'Random category #' . random_int(1, 1000),
+                'name'    => 'Random category #' . random_int(1, 10000),
                 'active'  => 1,
             ]
         );
@@ -1104,7 +1148,11 @@ class TransactionTransformerTest extends TestCase
         // use collector to get it:
         $transaction = $this->getTransaction($journal);
         $transformer = new TransactionTransformer(new ParameterBag);
-        $result      = $transformer->transform($transaction);
+        try {
+            $result = $transformer->transform($transaction);
+        } catch (FireflyException $e) {
+            $this->assertTrue(false, $e->getMessage());
+        }
         // basic fields:
         $this->assertEquals($journal->id, $result['journal_id']);
         $this->assertEquals('Withdrawal', $result['type']);
@@ -1135,10 +1183,10 @@ class TransactionTransformerTest extends TestCase
     /**
      * Basic journal (withdrawal) with a description for transactions.
      *
-     * @covers \FireflyIII\Transformers\TransactionTransformer::transform
+     * @covers \FireflyIII\Transformers\TransactionTransformer
      * throws \FireflyIII\Exceptions\FireflyException
      */
-    public function testTransactionDescription()
+    public function testTransactionDescription(): void
     {
         // make new asset account:
         $asset = Account::create(
@@ -1191,7 +1239,11 @@ class TransactionTransformerTest extends TestCase
         // use collector to get it:
         $transaction = $this->getTransaction($journal);
         $transformer = new TransactionTransformer(new ParameterBag);
-        $result      = $transformer->transform($transaction);
+        try {
+            $result = $transformer->transform($transaction);
+        } catch (FireflyException $e) {
+            $this->assertTrue(false, $e->getMessage());
+        }
         // basic fields:
         $this->assertEquals($journal->id, $result['journal_id']);
         $this->assertEquals('Withdrawal', $result['type']);
@@ -1219,10 +1271,10 @@ class TransactionTransformerTest extends TestCase
     /**
      * Basic journal (transfer)
      *
-     * @covers \FireflyIII\Transformers\TransactionTransformer::transform
+     * @covers \FireflyIII\Transformers\TransactionTransformer
      * throws \FireflyIII\Exceptions\FireflyException
      */
-    public function testTransferOne()
+    public function testTransferOne(): void
     {
         // make new asset account:
         $left = Account::create(
@@ -1275,7 +1327,11 @@ class TransactionTransformerTest extends TestCase
         // use collector to get it:
         $transaction = $this->getTransaction($journal);
         $transformer = new TransactionTransformer(new ParameterBag);
-        $result      = $transformer->transform($transaction);
+        try {
+            $result = $transformer->transform($transaction);
+        } catch (FireflyException $e) {
+            $this->assertTrue(false, $e->getMessage());
+        }
         // basic fields:
         $this->assertEquals($journal->id, $result['journal_id']);
         $this->assertEquals('Transfer', $result['type']);
@@ -1303,10 +1359,10 @@ class TransactionTransformerTest extends TestCase
     /**
      * Basic journal (transfer)
      *
-     * @covers \FireflyIII\Transformers\TransactionTransformer::transform
+     * @covers \FireflyIII\Transformers\TransactionTransformer
      * throws \FireflyIII\Exceptions\FireflyException
      */
-    public function testTransferTwo()
+    public function testTransferTwo(): void
     {
         // make new asset account:
         $left = Account::create(
@@ -1361,7 +1417,11 @@ class TransactionTransformerTest extends TestCase
         // use collector to get it:
         $transaction = $this->getTransaction($journal);
         $transformer = new TransactionTransformer(new ParameterBag);
-        $result      = $transformer->transform($transaction);
+        try {
+            $result = $transformer->transform($transaction);
+        } catch (FireflyException $e) {
+            $this->assertTrue(false, $e->getMessage());
+        }
         // basic fields:
         $this->assertEquals($journal->id, $result['journal_id']);
         $this->assertEquals('Transfer', $result['type']);
@@ -1393,7 +1453,7 @@ class TransactionTransformerTest extends TestCase
      */
     protected function getTransaction(TransactionJournal $journal): Transaction
     {
-        $collector = new JournalCollector;
+        $collector = new TransactionCollector;
         $collector->setUser($this->user());
         $collector->withOpposingAccount()->withCategoryInformation()->withBudgetInformation();
         $collector->setJournals(new Collection([$journal]));
@@ -1406,7 +1466,7 @@ class TransactionTransformerTest extends TestCase
         if (!($transactionType === TransactionType::WITHDRAWAL)) {
             $collector->addFilter(NegativeAmountFilter::class);
         }
-        $journals = $collector->getJournals();
+        $journals = $collector->getTransactions();
 
         return $journals->first();
     }

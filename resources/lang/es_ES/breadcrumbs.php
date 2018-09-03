@@ -1,8 +1,8 @@
 <?php
-declare(strict_types=1);
+
 /**
  * breadcrumbs.php
- * Copyright (c) 2017 thegrumpydictator@gmail.com
+ * Copyright (c) 2018 thegrumpydictator@gmail.com
  *
  * This file is part of Firefly III.
  *
@@ -20,12 +20,14 @@ declare(strict_types=1);
  * along with Firefly III. If not, see <http://www.gnu.org/licenses/>.
  */
 
+declare(strict_types=1);
+
 return [
     'home'                => 'Inicio',
     'edit_currency'       => 'Editar moneda ":name"',
     'delete_currency'     => 'Eliminar moneda ":name"',
-    'newPiggyBank'        => 'Crear nueva alcancía',
-    'edit_piggyBank'      => 'Editar alcancía ":name"',
+    'newPiggyBank'        => 'Crear nueva hucha',
+    'edit_piggyBank'      => 'Editar hucha ":name"',
     'preferences'         => 'Preferencias',
     'profile'             => 'Perfil',
     'changePassword'      => 'Cambiar contraseña',

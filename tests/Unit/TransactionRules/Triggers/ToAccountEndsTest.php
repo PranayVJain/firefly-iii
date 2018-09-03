@@ -23,7 +23,9 @@ declare(strict_types=1);
 namespace Tests\Unit\TransactionRules\Triggers;
 
 use FireflyIII\Models\TransactionJournal;
+use FireflyIII\Repositories\Journal\JournalRepositoryInterface;
 use FireflyIII\TransactionRules\Triggers\ToAccountEnds;
+use Illuminate\Support\Collection;
 use Tests\TestCase;
 
 /**
@@ -32,35 +34,35 @@ use Tests\TestCase;
 class ToAccountEndsTest extends TestCase
 {
     /**
-     * @covers \FireflyIII\TransactionRules\Triggers\ToAccountEnds::triggered
+     * @covers \FireflyIII\TransactionRules\Triggers\ToAccountEnds
      */
-    public function testTriggered()
+    public function testTriggered(): void
     {
-        $count = 0;
-        while ($count === 0) {
-            $journal     = TransactionJournal::inRandomOrder()->whereNull('deleted_at')->first();
-            $count       = $journal->transactions()->where('amount', '>', 0)->count();
-            $transaction = $journal->transactions()->where('amount', '>', 0)->first();
-        }
+        $repository = $this->mock(JournalRepositoryInterface::class);
 
-        $account = $transaction->account;
+        /** @var TransactionJournal $journal */
+        $journal    = $this->user()->transactionJournals()->inRandomOrder()->first();
+        $account    = $this->user()->accounts()->inRandomOrder()->first();
+        $collection = new Collection([$account]);
+        $repository->shouldReceive('getJournalDestinationAccounts')->once()->andReturn($collection);
+
         $trigger = ToAccountEnds::makeFromStrings(substr($account->name, -3), false);
         $result  = $trigger->triggered($journal);
         $this->assertTrue($result);
     }
 
     /**
-     * @covers \FireflyIII\TransactionRules\Triggers\ToAccountEnds::triggered
+     * @covers \FireflyIII\TransactionRules\Triggers\ToAccountEnds
      */
-    public function testTriggeredLonger()
+    public function testTriggeredLonger(): void
     {
-        $count = 0;
-        while ($count === 0) {
-            $journal     = TransactionJournal::inRandomOrder()->whereNull('deleted_at')->first();
-            $count       = $journal->transactions()->where('amount', '>', 0)->count();
-            $transaction = $journal->transactions()->where('amount', '>', 0)->first();
-        }
-        $account     = $transaction->account;
+        $repository = $this->mock(JournalRepositoryInterface::class);
+
+        /** @var TransactionJournal $journal */
+        $journal    = $this->user()->transactionJournals()->inRandomOrder()->first();
+        $account    = $this->user()->accounts()->inRandomOrder()->first();
+        $collection = new Collection([$account]);
+        $repository->shouldReceive('getJournalDestinationAccounts')->once()->andReturn($collection);
 
         $trigger = ToAccountEnds::makeFromStrings('bla-bla-bla' . $account->name, false);
         $result  = $trigger->triggered($journal);
@@ -68,44 +70,53 @@ class ToAccountEndsTest extends TestCase
     }
 
     /**
-     * @covers \FireflyIII\TransactionRules\Triggers\ToAccountEnds::triggered
+     * @covers \FireflyIII\TransactionRules\Triggers\ToAccountEnds
      */
-    public function testTriggeredNot()
+    public function testTriggeredNot(): void
     {
-        $journal = TransactionJournal::inRandomOrder()->whereNull('deleted_at')->first();
+        $repository = $this->mock(JournalRepositoryInterface::class);
 
-        $trigger = ToAccountEnds::makeFromStrings((string)random_int(1, 234), false);
+        /** @var TransactionJournal $journal */
+        $journal    = $this->user()->transactionJournals()->inRandomOrder()->first();
+        $account    = $this->user()->accounts()->inRandomOrder()->first();
+        $collection = new Collection([$account]);
+        $repository->shouldReceive('getJournalDestinationAccounts')->once()->andReturn($collection);
+
+        $trigger = ToAccountEnds::makeFromStrings((string)random_int(1, 1234), false);
         $result  = $trigger->triggered($journal);
         $this->assertFalse($result);
     }
 
     /**
-     * @covers \FireflyIII\TransactionRules\Triggers\ToAccountEnds::willMatchEverything
+     * @covers \FireflyIII\TransactionRules\Triggers\ToAccountEnds
      */
-    public function testWillMatchEverythingEmpty()
+    public function testWillMatchEverythingEmpty(): void
     {
-        $value  = '';
-        $result = ToAccountEnds::willMatchEverything($value);
+        $repository = $this->mock(JournalRepositoryInterface::class);
+        $value      = '';
+        $result     = ToAccountEnds::willMatchEverything($value);
         $this->assertTrue($result);
     }
 
     /**
-     * @covers \FireflyIII\TransactionRules\Triggers\ToAccountEnds::willMatchEverything
+     * @covers \FireflyIII\TransactionRules\Triggers\ToAccountEnds
      */
-    public function testWillMatchEverythingNotNull()
+    public function testWillMatchEverythingNotNull(): void
     {
-        $value  = 'x';
-        $result = ToAccountEnds::willMatchEverything($value);
+        $repository = $this->mock(JournalRepositoryInterface::class);
+        $value      = 'x';
+        $result     = ToAccountEnds::willMatchEverything($value);
         $this->assertFalse($result);
     }
 
     /**
-     * @covers \FireflyIII\TransactionRules\Triggers\ToAccountEnds::willMatchEverything
+     * @covers \FireflyIII\TransactionRules\Triggers\ToAccountEnds
      */
-    public function testWillMatchEverythingNull()
+    public function testWillMatchEverythingNull(): void
     {
-        $value  = null;
-        $result = ToAccountEnds::willMatchEverything($value);
+        $repository = $this->mock(JournalRepositoryInterface::class);
+        $value      = null;
+        $result     = ToAccountEnds::willMatchEverything($value);
         $this->assertTrue($result);
     }
 }

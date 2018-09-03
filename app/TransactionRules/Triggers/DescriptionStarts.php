@@ -42,11 +42,11 @@ final class DescriptionStarts extends AbstractTrigger implements TriggerInterfac
      * (even if it will still include 99.9% of the users transactions), this method MUST return
      * false.
      *
-     * @param null $value
+     * @param mixed $value
      *
      * @return bool
      */
-    public static function willMatchEverything($value = null)
+    public static function willMatchEverything($value = null): bool
     {
         if (null !== $value) {
             $res = '' === (string)$value;
@@ -74,7 +74,7 @@ final class DescriptionStarts extends AbstractTrigger implements TriggerInterfac
         $description = strtolower($journal->description ?? '');
         $search      = strtolower($this->triggerValue);
 
-        $part = substr($description, 0, strlen($search));
+        $part = substr($description, 0, \strlen($search));
 
         if ($part === $search) {
             Log::debug(sprintf('RuleTrigger DescriptionStarts for journal #%d: "%s" starts with "%s", return true.', $journal->id, $description, $search));

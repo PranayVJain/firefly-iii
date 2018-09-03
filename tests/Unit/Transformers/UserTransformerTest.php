@@ -37,9 +37,9 @@ class UserTransformerTest extends TestCase
     /**
      * Test basic transformer.
      *
-     * @covers \FireflyIII\Transformers\UserTransformer::transform
+     * @covers \FireflyIII\Transformers\UserTransformer
      */
-    public function testBasic()
+    public function testBasic(): void
     {
         $user        = $this->user();
         $transformer = new UserTransformer(new ParameterBag());
@@ -52,9 +52,9 @@ class UserTransformerTest extends TestCase
     /**
      * Test basic transformer.
      *
-     * @covers \FireflyIII\Transformers\UserTransformer::transform
+     * @covers \FireflyIII\Transformers\UserTransformer
      */
-    public function testEmptyUser()
+    public function testEmptyUser(): void
     {
         $user        = $this->emptyUser();
         $transformer = new UserTransformer(new ParameterBag());

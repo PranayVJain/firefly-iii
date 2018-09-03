@@ -42,18 +42,18 @@ class BulkControllerTest extends TestCase
     /**
      *
      */
-    public function setUp()
+    public function setUp(): void
     {
         parent::setUp();
-        Log::debug(sprintf('Now in %s.', get_class($this)));
+        Log::debug(sprintf('Now in %s.', \get_class($this)));
     }
 
 
     /**
-     * @covers \FireflyIII\Http\Controllers\Transaction\BulkController::edit
-     * @covers \FireflyIII\Http\Controllers\Transaction\BulkController::__construct
+     * @covers \FireflyIII\Http\Controllers\Transaction\BulkController
+     * @covers \FireflyIII\Http\Controllers\Transaction\BulkController
      */
-    public function testEdit()
+    public function testEdit(): void
     {
         // mock stuff:
         $journalRepos = $this->mock(JournalRepositoryInterface::class);
@@ -61,7 +61,7 @@ class BulkControllerTest extends TestCase
         $budgetRepos->shouldReceive('getActiveBudgets')->andReturn(new Collection);
         $journalRepos->shouldReceive('getJournalSourceAccounts')->andReturn(new Collection);
         $journalRepos->shouldReceive('getJournalDestinationAccounts')->andReturn(new Collection);
-        $journalRepos->shouldReceive('first')->andReturn(new TransactionJournal);
+        $journalRepos->shouldReceive('firstNull')->andReturn(new TransactionJournal);
         $journalRepos->shouldReceive('getTransactionType')->andReturn('Transfer');
         $journalRepos->shouldReceive('isJournalReconciled')->andReturn(false);
 
@@ -76,26 +76,26 @@ class BulkControllerTest extends TestCase
     }
 
     /**
-     * @covers \FireflyIII\Http\Controllers\Transaction\BulkController::edit
+     * @covers \FireflyIII\Http\Controllers\Transaction\BulkController
      */
-    public function testEditMultiple()
+    public function testEditMultiple(): void
     {
         // mock stuff:
         $journalRepos = $this->mock(JournalRepositoryInterface::class);
         $budgetRepos  = $this->mock(BudgetRepositoryInterface::class);
         $budgetRepos->shouldReceive('getActiveBudgets')->andReturn(new Collection);
-        $journalRepos->shouldReceive('first')->andReturn(new TransactionJournal);
+        $journalRepos->shouldReceive('firstNull')->andReturn(new TransactionJournal);
         $journalRepos->shouldReceive('getJournalSourceAccounts')
-                     ->andReturn(new Collection([1, 2, 3]), new Collection, new Collection, new Collection);
+                     ->andReturn(new Collection([1, 2, 3]), new Collection, new Collection, new Collection, new Collection([1]));
         $journalRepos->shouldReceive('getJournalDestinationAccounts')
-                     ->andReturn(new Collection, new Collection([1, 2, 3]), new Collection, new Collection);
+                     ->andReturn(new Collection, new Collection([1, 2, 3]), new Collection, new Collection, new Collection([1]));
         $journalRepos->shouldReceive('getTransactionType')
-                     ->andReturn('Withdrawal', 'Opening balance');
+                     ->andReturn('Withdrawal', 'Opening balance', 'Withdrawal', 'Withdrawal', 'Withdrawal');
         $journalRepos->shouldReceive('isJournalReconciled')
-                     ->andReturn(true, false);
+                     ->andReturn(true, false, false, false, false);
 
         // default transactions
-        $collection = $this->user()->transactionJournals()->take(4)->get();
+        $collection = $this->user()->transactionJournals()->take(5)->get();
         $allIds     = $collection->pluck('id')->toArray();
         $route      = route('transactions.bulk.edit', implode(',', $allIds));
         $this->be($this->user());
@@ -111,47 +111,36 @@ class BulkControllerTest extends TestCase
     }
 
     /**
-     * @covers \FireflyIII\Http\Controllers\Transaction\BulkController::edit
+     * @covers \FireflyIII\Http\Controllers\Transaction\BulkController
+     * @covers \FireflyIII\Http\Controllers\Transaction\BulkController
      */
-    public function testEditMultipleNothingLeft()
+    public function testEditNull(): void
     {
         // mock stuff:
         $journalRepos = $this->mock(JournalRepositoryInterface::class);
         $budgetRepos  = $this->mock(BudgetRepositoryInterface::class);
         $budgetRepos->shouldReceive('getActiveBudgets')->andReturn(new Collection);
-        $journalRepos->shouldReceive('first')->andReturn(new TransactionJournal);
-        $journalRepos->shouldReceive('getJournalSourceAccounts')
-                     ->andReturn(new Collection([1, 2, 3]), new Collection, new Collection, new Collection);
-        $journalRepos->shouldReceive('getJournalDestinationAccounts')
-                     ->andReturn(new Collection, new Collection([1, 2, 3]), new Collection, new Collection);
-        $journalRepos->shouldReceive('getTransactionType')
-                     ->andReturn('Withdrawal', 'Opening balance');
-        $journalRepos->shouldReceive('isJournalReconciled')
-                     ->andReturn(true, true);
+        $journalRepos->shouldReceive('getJournalSourceAccounts')->andReturn(new Collection);
+        $journalRepos->shouldReceive('getJournalDestinationAccounts')->andReturn(new Collection);
+        $journalRepos->shouldReceive('firstNull')->andReturn(new TransactionJournal, null);
+        $journalRepos->shouldReceive('getTransactionType')->andReturn('Transfer');
+        $journalRepos->shouldReceive('isJournalReconciled')->andReturn(false);
 
+        $transfers = TransactionJournal::where('transaction_type_id', 3)->where('user_id', $this->user()->id)->take(4)->get()->pluck('id')->toArray();
 
-        // default transactions
-        $collection = $this->user()->transactionJournals()->take(4)->get();
-        $allIds     = $collection->pluck('id')->toArray();
-        $route      = route('transactions.bulk.edit', implode(',', $allIds));
         $this->be($this->user());
-        $response = $this->get($route);
+        $response = $this->get(route('transactions.bulk.edit', $transfers));
         $response->assertStatus(200);
         $response->assertSee('Bulk edit a number of transactions');
-        $response->assertSessionHas('info');
         // has bread crumb
         $response->assertSee('<ol class="breadcrumb">');
-        $response->assertSessionHas('error', 'You have selected no valid transactions to edit.');
-        $response->assertSee('marked as reconciled');
-        $response->assertSee('multiple source accounts');
-        $response->assertSee('multiple destination accounts');
     }
 
     /**
-     * @covers \FireflyIII\Http\Controllers\Transaction\BulkController::update
+     * @covers \FireflyIII\Http\Controllers\Transaction\BulkController
      * @covers \FireflyIII\Http\Requests\BulkEditJournalRequest
      */
-    public function testUpdate()
+    public function testUpdate(): void
     {
         $tags       = ['a', 'b', 'c'];
         $collection = TransactionJournal::where('transaction_type_id', 1)->where('user_id', $this->user()->id)->take(4)->get();
@@ -165,8 +154,8 @@ class BulkControllerTest extends TestCase
         ];
 
         $repository = $this->mock(JournalRepositoryInterface::class);
-        $repository->shouldReceive('first')->once()->andReturn(new TransactionJournal);
-        $repository->shouldReceive('find')->times(4)->andReturn(new TransactionJournal);
+        $repository->shouldReceive('firstNull')->once()->andReturn(new TransactionJournal);
+        $repository->shouldReceive('findNull')->times(4)->andReturn(new TransactionJournal);
 
         $repository->shouldReceive('updateCategory')->times(4)->andReturn(new TransactionJournal())
                    ->withArgs([Mockery::any(), $data['category']]);
@@ -175,6 +164,44 @@ class BulkControllerTest extends TestCase
                    ->withArgs([Mockery::any(), $data['budget_id']]);
 
         $repository->shouldReceive('updateTags')->times(4)->andReturn(new TransactionJournal())
+                   ->withArgs([Mockery::any(), ['tags' => $tags]]);
+
+
+        $route = route('transactions.bulk.update');
+        $this->be($this->user());
+        $response = $this->post($route, $data);
+        $response->assertStatus(302);
+        $response->assertSessionHas('success');
+    }
+
+    /**
+     * @covers \FireflyIII\Http\Controllers\Transaction\BulkController
+     * @covers \FireflyIII\Http\Requests\BulkEditJournalRequest
+     */
+    public function testUpdateNull(): void
+    {
+        $tags       = ['a', 'b', 'c'];
+        $collection = TransactionJournal::where('transaction_type_id', 1)->where('user_id', $this->user()->id)->take(4)->get();
+        $allIds     = $collection->pluck('id')->toArray();
+
+        $data = [
+            'category'  => 'Some new category',
+            'budget_id' => 1,
+            'tags'      => 'a,b,c',
+            'journals'  => $allIds,
+        ];
+
+        $repository = $this->mock(JournalRepositoryInterface::class);
+        $repository->shouldReceive('firstNull')->once()->andReturn(new TransactionJournal);
+        $repository->shouldReceive('findNull')->times(4)->andReturn(new TransactionJournal, null);
+
+        $repository->shouldReceive('updateCategory')->times(1)->andReturn(new TransactionJournal())
+                   ->withArgs([Mockery::any(), $data['category']]);
+
+        $repository->shouldReceive('updateBudget')->times(1)->andReturn(new TransactionJournal())
+                   ->withArgs([Mockery::any(), $data['budget_id']]);
+
+        $repository->shouldReceive('updateTags')->times(1)->andReturn(new TransactionJournal())
                    ->withArgs([Mockery::any(), ['tags' => $tags]]);
 
 

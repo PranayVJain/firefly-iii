@@ -18,6 +18,7 @@
  * You should have received a copy of the GNU General Public License
  * along with Firefly III. If not, see <http://www.gnu.org/licenses/>.
  */
+/** @noinspection PhpUndefinedClassInspection */
 declare(strict_types=1);
 
 namespace FireflyIII\Http\Controllers\Admin;
@@ -27,10 +28,7 @@ use FireflyIII\Http\Middleware\IsDemoUser;
 use FireflyIII\Http\Middleware\IsSandStormUser;
 use FireflyIII\Http\Requests\ConfigurationRequest;
 use FireflyIII\Support\Facades\FireflyConfig;
-use Preferences;
-use Redirect;
-use Session;
-use View;
+use Illuminate\Http\RedirectResponse;
 
 /**
  * Class ConfigurationController.
@@ -57,7 +55,9 @@ class ConfigurationController extends Controller
     }
 
     /**
-     * @return View
+     * Show configuration index.
+     *
+     * @return \Illuminate\Contracts\View\Factory|\Illuminate\View\View
      */
     public function index()
     {
@@ -77,11 +77,13 @@ class ConfigurationController extends Controller
     }
 
     /**
+     * Store new configuration values.
+     *
      * @param ConfigurationRequest $request
      *
-     * @return \Illuminate\Http\RedirectResponse
+     * @return RedirectResponse
      */
-    public function postIndex(ConfigurationRequest $request)
+    public function postIndex(ConfigurationRequest $request): RedirectResponse
     {
         // get config values:
         $data = $request->getConfigurationData();
@@ -91,9 +93,9 @@ class ConfigurationController extends Controller
         FireflyConfig::set('is_demo_site', $data['is_demo_site']);
 
         // flash message
-        Session::flash('success', (string)trans('firefly.configuration_updated'));
-        Preferences::mark();
+        session()->flash('success', (string)trans('firefly.configuration_updated'));
+        app('preferences')->mark();
 
-        return Redirect::route('admin.configuration.index');
+        return redirect()->route('admin.configuration.index');
     }
 }

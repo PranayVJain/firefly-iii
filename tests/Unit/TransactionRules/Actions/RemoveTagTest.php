@@ -34,10 +34,9 @@ use Tests\TestCase;
 class RemoveTagTest extends TestCase
 {
     /**
-     * @covers \FireflyIII\TransactionRules\Actions\RemoveTag::__construct()
-     * @covers \FireflyIII\TransactionRules\Actions\RemoveTag::act()
+     * @covers \FireflyIII\TransactionRules\Actions\RemoveTag
      */
-    public function testAct()
+    public function testAct(): void
     {
 
         // find journal with at least one tag
@@ -61,10 +60,10 @@ class RemoveTagTest extends TestCase
     }
 
     /**
-     * @covers \FireflyIII\TransactionRules\Actions\RemoveTag::__construct()
-     * @covers \FireflyIII\TransactionRules\Actions\RemoveTag::act()
+     * @covers \FireflyIII\TransactionRules\Actions\RemoveTag()
+     * @covers \FireflyIII\TransactionRules\Actions\RemoveTag
      */
-    public function testActNoTag()
+    public function testActNoTag(): void
     {
         // get journal, link al tags:
         /** @var TransactionJournal $journal */

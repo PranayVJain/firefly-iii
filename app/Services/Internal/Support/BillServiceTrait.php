@@ -25,14 +25,38 @@ namespace FireflyIII\Services\Internal\Support;
 
 use FireflyIII\Models\Bill;
 use FireflyIII\Models\Note;
+use FireflyIII\Models\RuleAction;
+use Illuminate\Support\Collection;
 
 /**
  * Trait BillServiceTrait
  *
- * @package FireflyIII\Services\Internal\Support
  */
 trait BillServiceTrait
 {
+
+    /**
+     * @param Bill   $bill
+     * @param string $oldName
+     * @param string $newName
+     */
+    public function updateBillActions(Bill $bill, string $oldName, string $newName): void
+    {
+        if ($oldName === $newName) {
+            return;
+        }
+        $ruleIds = $bill->user->rules()->get(['id'])->pluck('id')->toArray();
+        /** @var Collection $set */
+        $set = RuleAction::whereIn('rule_id', $ruleIds)
+                         ->where('action_type', 'link_to_bill')
+                         ->where('action_value', $oldName)->get();
+
+        /** @var RuleAction $ruleAction */
+        foreach ($set as $ruleAction) {
+            $ruleAction->action_value = $newName;
+            $ruleAction->save();
+        }
+    }
 
 
     /**
@@ -43,7 +67,7 @@ trait BillServiceTrait
      */
     public function updateNote(Bill $bill, string $note): bool
     {
-        if (0 === strlen($note)) {
+        if ('' === $note) {
             $dbNote = $bill->notes()->first();
             if (null !== $dbNote) {
                 $dbNote->delete(); // @codeCoverageIgnore

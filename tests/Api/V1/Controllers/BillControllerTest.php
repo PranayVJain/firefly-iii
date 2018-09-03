@@ -27,6 +27,7 @@ namespace Tests\Api\V1\Controllers;
 use FireflyIII\Models\Bill;
 use FireflyIII\Repositories\Bill\BillRepositoryInterface;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Collection;
 use Laravel\Passport\Passport;
 use Log;
 use Tests\TestCase;
@@ -39,21 +40,20 @@ class BillControllerTest extends TestCase
     /**
      *
      */
-    public function setUp()
+    public function setUp(): void
     {
         parent::setUp();
         Passport::actingAs($this->user());
-        Log::debug(sprintf('Now in %s.', get_class($this)));
+        Log::debug(sprintf('Now in %s.', \get_class($this)));
 
     }
 
     /**
      * Send delete
      *
-     * @covers \FireflyIII\Api\V1\Controllers\BillController::delete
-     * @covers \FireflyIII\Api\V1\Controllers\BillController::__construct
+     * @covers \FireflyIII\Api\V1\Controllers\BillController
      */
-    public function testDelete()
+    public function testDelete(): void
     {
         // mock stuff:
         $repository = $this->mock(BillRepositoryInterface::class);
@@ -62,7 +62,7 @@ class BillControllerTest extends TestCase
         $repository->shouldReceive('setUser')->once();
         $repository->shouldReceive('destroy')->once()->andReturn(true);
 
-        // get account:
+        // get bill:
         $bill = $this->user()->bills()->first();
 
         // call API
@@ -71,10 +71,11 @@ class BillControllerTest extends TestCase
     }
 
     /**
-     * @covers \FireflyIII\Api\V1\Controllers\BillController::__construct
-     * @covers \FireflyIII\Api\V1\Controllers\BillController::index
+     * Show all bills
+     *
+     * @covers \FireflyIII\Api\V1\Controllers\BillController
      */
-    public function testIndex()
+    public function testIndex(): void
     {
         // create stuff
         $bills     = factory(Bill::class, 10)->create();
@@ -83,8 +84,9 @@ class BillControllerTest extends TestCase
         $repository = $this->mock(BillRepositoryInterface::class);
 
         // mock calls:
-        $repository->shouldReceive('setUser')->once();
+        $repository->shouldReceive('setUser');
         $repository->shouldReceive('getPaginator')->withAnyArgs()->andReturn($paginator)->once();
+        $repository->shouldReceive('getRulesForBill')->withAnyArgs()->andReturn(new Collection());
 
         // test API
         $response = $this->get('/api/v1/bills');
@@ -98,17 +100,19 @@ class BillControllerTest extends TestCase
     }
 
     /**
-     * @covers \FireflyIII\Api\V1\Controllers\BillController::show
+     * Show one bill
+     *
+     * @covers \FireflyIII\Api\V1\Controllers\BillController
      */
-    public function testShow()
+    public function testShow(): void
     {
         // create stuff
         $bill       = $this->user()->bills()->first();
         $repository = $this->mock(BillRepositoryInterface::class);
 
         // mock calls:
-        $repository->shouldReceive('setUser')->once();
-
+        $repository->shouldReceive('setUser');
+        $repository->shouldReceive('getRulesForBill')->withAnyArgs()->andReturn(new Collection());
         // test API
         $response = $this->get('/api/v1/bills/' . $bill->id);
         $response->assertStatus(200);
@@ -122,13 +126,12 @@ class BillControllerTest extends TestCase
     }
 
     /**
-     * @covers \FireflyIII\Api\V1\Controllers\BillController::store
-     * @covers \FireflyIII\Api\V1\Requests\BillRequest::rules
-     * @covers \FireflyIII\Api\V1\Requests\BillRequest::authorize
-     * @covers \FireflyIII\Api\V1\Requests\BillRequest::getAll
-     * @covers \FireflyIII\Api\V1\Requests\BillRequest::withValidator
+     * Store with minimum amount more than maximum amount
+     *
+     * @covers \FireflyIII\Api\V1\Controllers\BillController
+     * @covers \FireflyIII\Api\V1\Requests\BillRequest
      */
-    public function testStoreMinOverMax()
+    public function testStoreMinOverMax(): void
     {
         // create stuff
         $bill       = $this->user()->bills()->first();
@@ -140,11 +143,12 @@ class BillControllerTest extends TestCase
 
         // data to submit:
         $data = [
-            'name'        => 'New bill #' . random_int(1, 1000),
-            'match'       => 'some,words,' . random_int(1, 1000),
+            'name'        => 'New bill #' . random_int(1, 10000),
+            'match'       => 'some,words,' . random_int(1, 10000),
             'amount_min'  => '66.34',
             'amount_max'  => '45.67',
             'date'        => '2018-01-01',
+            'currency_id' => 1,
             'repeat_freq' => 'monthly',
             'skip'        => 0,
             'automatch'   => 1,
@@ -167,25 +171,25 @@ class BillControllerTest extends TestCase
     }
 
     /**
-     * @covers \FireflyIII\Api\V1\Controllers\BillController::store
-     * @covers \FireflyIII\Api\V1\Requests\BillRequest::rules
-     * @covers \FireflyIII\Api\V1\Requests\BillRequest::authorize
-     * @covers \FireflyIII\Api\V1\Requests\BillRequest::getAll
+     * Store a valid bill
+     *
+     * @covers \FireflyIII\Api\V1\Controllers\BillController
+     * @covers \FireflyIII\Api\V1\Requests\BillRequest
      */
-    public function testStoreValid()
+    public function testStoreValid(): void
     {
         // create stuff
         $bill       = $this->user()->bills()->first();
         $repository = $this->mock(BillRepositoryInterface::class);
 
         // mock calls:
-        $repository->shouldReceive('setUser')->once();
+        $repository->shouldReceive('setUser')->times(2);
         $repository->shouldReceive('store')->andReturn($bill);
-
+        $repository->shouldReceive('getRulesForBill')->withAnyArgs()->andReturn(new Collection());
         // data to submit:
         $data = [
-            'name'        => 'New bill #' . random_int(1, 1000),
-            'match'       => 'some,words,' . random_int(1, 1000),
+            'name'        => 'New bill #' . random_int(1, 10000),
+            'match'       => 'some,words,' . random_int(1, 10000),
             'amount_min'  => '12.34',
             'amount_max'  => '45.67',
             'date'        => '2018-01-01',
@@ -193,6 +197,7 @@ class BillControllerTest extends TestCase
             'skip'        => 0,
             'automatch'   => 1,
             'active'      => 1,
+            'currency_id' => 1,
 
         ];
 
@@ -205,25 +210,25 @@ class BillControllerTest extends TestCase
     }
 
     /**
-     * @covers \FireflyIII\Api\V1\Controllers\BillController::update
-     * @covers \FireflyIII\Api\V1\Requests\BillRequest::rules
-     * @covers \FireflyIII\Api\V1\Requests\BillRequest::authorize
-     * @covers \FireflyIII\Api\V1\Requests\BillRequest::getAll
+     * Update a valid bill.
+     *
+     * @covers \FireflyIII\Api\V1\Controllers\BillController
+     * @covers \FireflyIII\Api\V1\Requests\BillRequest
      */
-    public function testUpdateValid()
+    public function testUpdateValid(): void
     {
         // create stuff
         $bill       = $this->user()->bills()->first();
         $repository = $this->mock(BillRepositoryInterface::class);
 
         // mock calls:
-        $repository->shouldReceive('setUser')->once();
+        $repository->shouldReceive('setUser')->times(2);
         $repository->shouldReceive('update')->andReturn($bill);
-
+        $repository->shouldReceive('getRulesForBill')->withAnyArgs()->andReturn(new Collection());
         // data to submit:
         $data = [
-            'name'        => 'New bill #' . random_int(1, 1000),
-            'match'       => 'some,words,' . random_int(1, 1000),
+            'name'        => 'New bill #' . random_int(1, 10000),
+            'match'       => 'some,words,' . random_int(1, 10000),
             'amount_min'  => '12.34',
             'amount_max'  => '45.67',
             'date'        => '2018-01-01',
@@ -231,7 +236,7 @@ class BillControllerTest extends TestCase
             'skip'        => 0,
             'automatch'   => 1,
             'active'      => 1,
-
+            'currency_id' => 1,
         ];
 
         // test API

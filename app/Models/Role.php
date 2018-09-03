@@ -22,11 +22,15 @@ declare(strict_types=1);
 
 namespace FireflyIII\Models;
 
+use FireflyIII\User;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 /**
  * Class Role.
+ *
+ * @property int    $id
+ * @property string $name
  */
 class Role extends Model
 {
@@ -41,17 +45,15 @@ class Role extends Model
             'updated_at' => 'datetime',
         ];
 
-    /**
-     * @var array
-     */
+    /** @var array Fields that can be filled */
     protected $fillable = ['name', 'display_name', 'description'];
 
     /**
      * @codeCoverageIgnore
-     * @return \Illuminate\Database\Eloquent\Relations\BelongsToMany
+     * @return BelongsToMany
      */
     public function users(): BelongsToMany
     {
-        return $this->belongsToMany('FireflyIII\User');
+        return $this->belongsToMany(User::class);
     }
 }

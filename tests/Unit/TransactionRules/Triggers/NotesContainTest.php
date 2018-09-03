@@ -33,9 +33,9 @@ use Tests\TestCase;
 class NotesContainTest extends TestCase
 {
     /**
-     * @covers \FireflyIII\TransactionRules\Triggers\NotesContain::triggered
+     * @covers \FireflyIII\TransactionRules\Triggers\NotesContain
      */
-    public function testTriggered()
+    public function testTriggered(): void
     {
         $journal = TransactionJournal::inRandomOrder()->whereNull('deleted_at')->first();
         $journal->notes()->delete();
@@ -49,9 +49,9 @@ class NotesContainTest extends TestCase
     }
 
     /**
-     * @covers \FireflyIII\TransactionRules\Triggers\NotesContain::triggered
+     * @covers \FireflyIII\TransactionRules\Triggers\NotesContain
      */
-    public function testTriggeredDifferent()
+    public function testTriggeredDifferent(): void
     {
         $journal = TransactionJournal::inRandomOrder()->whereNull('deleted_at')->first();
         $journal->notes()->delete();
@@ -65,9 +65,9 @@ class NotesContainTest extends TestCase
     }
 
     /**
-     * @covers \FireflyIII\TransactionRules\Triggers\NotesContain::triggered
+     * @covers \FireflyIII\TransactionRules\Triggers\NotesContain
      */
-    public function testTriggeredEmpty()
+    public function testTriggeredEmpty(): void
     {
         $journal = TransactionJournal::inRandomOrder()->whereNull('deleted_at')->first();
         $journal->notes()->delete();
@@ -81,9 +81,9 @@ class NotesContainTest extends TestCase
     }
 
     /**
-     * @covers \FireflyIII\TransactionRules\Triggers\NotesContain::triggered
+     * @covers \FireflyIII\TransactionRules\Triggers\NotesContain
      */
-    public function testTriggeredNone()
+    public function testTriggeredNone(): void
     {
         $journal = TransactionJournal::inRandomOrder()->whereNull('deleted_at')->first();
         $journal->notes()->delete();
@@ -93,9 +93,9 @@ class NotesContainTest extends TestCase
     }
 
     /**
-     * @covers \FireflyIII\TransactionRules\Triggers\NotesContain::triggered
+     * @covers \FireflyIII\TransactionRules\Triggers\NotesContain
      */
-    public function testTriggeredPartial()
+    public function testTriggeredPartial(): void
     {
         $journal = TransactionJournal::inRandomOrder()->whereNull('deleted_at')->first();
         $journal->notes()->delete();
@@ -109,9 +109,9 @@ class NotesContainTest extends TestCase
     }
 
     /**
-     * @covers \FireflyIII\TransactionRules\Triggers\NotesContain::willMatchEverything
+     * @covers \FireflyIII\TransactionRules\Triggers\NotesContain
      */
-    public function testWillMatchEverythingEmpty()
+    public function testWillMatchEverythingEmpty(): void
     {
         $value  = '';
         $result = NotesContain::willMatchEverything($value);
@@ -119,9 +119,9 @@ class NotesContainTest extends TestCase
     }
 
     /**
-     * @covers \FireflyIII\TransactionRules\Triggers\NotesContain::willMatchEverything
+     * @covers \FireflyIII\TransactionRules\Triggers\NotesContain
      */
-    public function testWillMatchEverythingNotNull()
+    public function testWillMatchEverythingNotNull(): void
     {
         $value  = 'x';
         $result = NotesContain::willMatchEverything($value);
@@ -129,9 +129,9 @@ class NotesContainTest extends TestCase
     }
 
     /**
-     * @covers \FireflyIII\TransactionRules\Triggers\NotesContain::willMatchEverything
+     * @covers \FireflyIII\TransactionRules\Triggers\NotesContain
      */
-    public function testWillMatchEverythingNull()
+    public function testWillMatchEverythingNull(): void
     {
         $value  = null;
         $result = NotesContain::willMatchEverything($value);

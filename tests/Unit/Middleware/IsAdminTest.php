@@ -34,9 +34,23 @@ use Tests\TestCase;
 class IsAdminTest extends TestCase
 {
     /**
-     * @covers \FireflyIII\Http\Middleware\IsAdmin::handle
+     * Set up test
      */
-    public function testMiddleware()
+    public function setUp(): void
+    {
+        parent::setUp();
+
+        Route::middleware(IsAdmin::class)->any(
+            '/_test/is-admin', function () {
+            return 'OK';
+        }
+        );
+    }
+
+    /**
+     * @covers \FireflyIII\Http\Middleware\IsAdmin
+     */
+    public function testMiddleware(): void
     {
         $this->withoutExceptionHandling();
         $response = $this->get('/_test/is-admin');
@@ -45,9 +59,9 @@ class IsAdminTest extends TestCase
     }
 
     /**
-     * @covers \FireflyIII\Http\Middleware\IsAdmin::handle
+     * @covers \FireflyIII\Http\Middleware\IsAdmin
      */
-    public function testMiddlewareAjax()
+    public function testMiddlewareAjax(): void
     {
         $server = ['HTTP_X-Requested-With' => 'XMLHttpRequest'];
         $this->withoutExceptionHandling();
@@ -56,9 +70,9 @@ class IsAdminTest extends TestCase
     }
 
     /**
-     * @covers \FireflyIII\Http\Middleware\IsAdmin::handle
+     * @covers \FireflyIII\Http\Middleware\IsAdmin
      */
-    public function testMiddlewareNotOwner()
+    public function testMiddlewareNotOwner(): void
     {
         $this->withoutExceptionHandling();
         $this->be($this->emptyUser());
@@ -68,27 +82,13 @@ class IsAdminTest extends TestCase
     }
 
     /**
-     * @covers \FireflyIII\Http\Middleware\IsAdmin::handle
+     * @covers \FireflyIII\Http\Middleware\IsAdmin
      */
-    public function testMiddlewareOwner()
+    public function testMiddlewareOwner(): void
     {
         $this->be($this->user());
         $this->withoutExceptionHandling();
         $response = $this->get('/_test/is-admin');
         $this->assertEquals(Response::HTTP_OK, $response->getStatusCode());
-    }
-
-    /**
-     * Set up test
-     */
-    protected function setUp()
-    {
-        parent::setUp();
-
-        Route::middleware(IsAdmin::class)->any(
-            '/_test/is-admin', function () {
-            return 'OK';
-        }
-        );
     }
 }

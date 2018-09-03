@@ -33,9 +33,9 @@ use Tests\TestCase;
 class HasNoCategoryTest extends TestCase
 {
     /**
-     * @covers \FireflyIII\TransactionRules\Triggers\HasNoCategory::triggered
+     * @covers \FireflyIII\TransactionRules\Triggers\HasNoCategory
      */
-    public function testTriggeredCategory()
+    public function testTriggeredCategory(): void
     {
         $journal  = TransactionJournal::inRandomOrder()->whereNull('deleted_at')->first();
         $category = $journal->user->categories()->first();
@@ -49,9 +49,9 @@ class HasNoCategoryTest extends TestCase
     }
 
     /**
-     * @covers \FireflyIII\TransactionRules\Triggers\HasNoCategory::triggered
+     * @covers \FireflyIII\TransactionRules\Triggers\HasNoCategory
      */
-    public function testTriggeredNoCategory()
+    public function testTriggeredNoCategory(): void
     {
         $journal = TransactionJournal::inRandomOrder()->whereNull('deleted_at')->first();
         $journal->categories()->detach();
@@ -71,28 +71,28 @@ class HasNoCategoryTest extends TestCase
     }
 
     /**
-     * @covers \FireflyIII\TransactionRules\Triggers\HasNoCategory::triggered
+     * @covers \FireflyIII\TransactionRules\Triggers\HasNoCategory
      */
-    public function testTriggeredTransaction()
+    public function testTriggeredTransaction(): void
     {
-        $journal     = TransactionJournal::inRandomOrder()->whereNull('deleted_at')->first();
-        $transaction = $journal->transactions()->first();
-        $category    = $journal->user->categories()->first();
+        $withdrawal  = $this->getRandomWithdrawal();
+        $transaction = $withdrawal->transactions()->first();
+        $category    = $withdrawal->user->categories()->first();
 
-        $journal->categories()->detach();
-        $transaction->categories()->save($category);
-        $this->assertEquals(0, $journal->categories()->count());
+        $withdrawal->categories()->detach();
+        $transaction->categories()->sync([$category->id]);
+        $this->assertEquals(0, $withdrawal->categories()->count());
         $this->assertEquals(1, $transaction->categories()->count());
 
         $trigger = HasNoCategory::makeFromStrings('', false);
-        $result  = $trigger->triggered($journal);
+        $result  = $trigger->triggered($withdrawal);
         $this->assertFalse($result);
     }
 
     /**
-     * @covers \FireflyIII\TransactionRules\Triggers\HasNoCategory::willMatchEverything
+     * @covers \FireflyIII\TransactionRules\Triggers\HasNoCategory
      */
-    public function testWillMatchEverythingNull()
+    public function testWillMatchEverythingNull(): void
     {
         $value  = null;
         $result = HasNoCategory::willMatchEverything($value);

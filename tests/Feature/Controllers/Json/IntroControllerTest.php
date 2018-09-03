@@ -37,19 +37,16 @@ class IntroControllerTest extends TestCase
     /**
      *
      */
-    public function setUp()
+    public function setUp(): void
     {
         parent::setUp();
-        Log::debug(sprintf('Now in %s.', get_class($this)));
+        Log::debug(sprintf('Now in %s.', \get_class($this)));
     }
 
     /**
-     * @covers \FireflyIII\Http\Controllers\Json\IntroController::getIntroSteps
-     * @covers \FireflyIII\Http\Controllers\Json\IntroController::getBasicSteps
-     * @covers \FireflyIII\Http\Controllers\Json\IntroController::getSpecificSteps
-     * @covers \FireflyIII\Http\Controllers\Json\IntroController::hasOutroStep
+     * @covers \FireflyIII\Http\Controllers\Json\IntroController
      */
-    public function testGetIntroSteps()
+    public function testGetIntroSteps(): void
     {
         $this->be($this->user());
         $response = $this->get(route('json.intro', ['index']));
@@ -57,12 +54,9 @@ class IntroControllerTest extends TestCase
     }
 
     /**
-     * @covers \FireflyIII\Http\Controllers\Json\IntroController::getIntroSteps
-     * @covers \FireflyIII\Http\Controllers\Json\IntroController::getBasicSteps
-     * @covers \FireflyIII\Http\Controllers\Json\IntroController::getSpecificSteps
-     * @covers \FireflyIII\Http\Controllers\Json\IntroController::hasOutroStep
+     * @covers \FireflyIII\Http\Controllers\Json\IntroController
      */
-    public function testGetIntroStepsAsset()
+    public function testGetIntroStepsAsset(): void
     {
         $this->be($this->user());
         $response = $this->get(route('json.intro', ['accounts_create', 'asset']));
@@ -70,12 +64,9 @@ class IntroControllerTest extends TestCase
     }
 
     /**
-     * @covers \FireflyIII\Http\Controllers\Json\IntroController::getIntroSteps
-     * @covers \FireflyIII\Http\Controllers\Json\IntroController::getBasicSteps
-     * @covers \FireflyIII\Http\Controllers\Json\IntroController::getSpecificSteps
-     * @covers \FireflyIII\Http\Controllers\Json\IntroController::hasOutroStep
+     * @covers \FireflyIII\Http\Controllers\Json\IntroController
      */
-    public function testGetIntroStepsOutro()
+    public function testGetIntroStepsOutro(): void
     {
         $this->be($this->user());
         $response = $this->get(route('json.intro', ['reports_report', 'category']));
@@ -83,9 +74,9 @@ class IntroControllerTest extends TestCase
     }
 
     /**
-     * @covers \FireflyIII\Http\Controllers\Json\IntroController::postEnable
+     * @covers \FireflyIII\Http\Controllers\Json\IntroController
      */
-    public function testPostEnable()
+    public function testPostEnable(): void
     {
         $this->be($this->user());
         $response = $this->post(route('json.intro.enable', ['accounts_create', 'asset']));
@@ -93,9 +84,9 @@ class IntroControllerTest extends TestCase
     }
 
     /**
-     * @covers \FireflyIII\Http\Controllers\Json\IntroController::postFinished
+     * @covers \FireflyIII\Http\Controllers\Json\IntroController
      */
-    public function testPostFinished()
+    public function testPostFinished(): void
     {
         $this->be($this->user());
         $response = $this->post(route('json.intro.finished', ['accounts_create', 'asset']));

@@ -1,8 +1,8 @@
 <?php
-declare(strict_types=1);
+
 /**
  * UpgradeDatabase.php
- * Copyright (c) 2017 thegrumpydictator@gmail.com
+ * Copyright (c) 2018 thegrumpydictator@gmail.com
  *
  * This file is part of Firefly III.
  *
@@ -20,6 +20,12 @@ declare(strict_types=1);
  * along with Firefly III. If not, see <http://www.gnu.org/licenses/>.
  */
 
+/** @noinspection MultipleReturnStatementsInspection */
+/** @noinspection PhpStaticAsDynamicMethodCallInspection */
+/** @noinspection PhpDynamicAsStaticMethodCallInspection */
+
+declare(strict_types=1);
+
 namespace FireflyIII\Console\Commands;
 
 use DB;
@@ -28,27 +34,36 @@ use FireflyIII\Models\Account;
 use FireflyIII\Models\AccountMeta;
 use FireflyIII\Models\AccountType;
 use FireflyIII\Models\Attachment;
+use FireflyIII\Models\Bill;
 use FireflyIII\Models\Note;
+use FireflyIII\Models\Preference;
+use FireflyIII\Models\Rule;
+use FireflyIII\Models\RuleAction;
+use FireflyIII\Models\RuleGroup;
+use FireflyIII\Models\RuleTrigger;
 use FireflyIII\Models\Transaction;
 use FireflyIII\Models\TransactionCurrency;
 use FireflyIII\Models\TransactionJournal;
 use FireflyIII\Models\TransactionJournalMeta;
 use FireflyIII\Models\TransactionType;
+use FireflyIII\Repositories\Account\AccountRepositoryInterface;
 use FireflyIII\Repositories\Currency\CurrencyRepositoryInterface;
+use FireflyIII\Repositories\Journal\JournalRepositoryInterface;
+use FireflyIII\User;
 use Illuminate\Console\Command;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Collection;
 use Log;
-use Preferences;
 use Schema;
+use UnexpectedValueException;
 
 /**
  * Class UpgradeDatabase.
  *
  * Upgrade user database.
- *
- *
- * @SuppressWarnings(PHPMD.CouplingBetweenObjects) // it just touches a lot of things.
+ * @SuppressWarnings(PHPMD.ExcessiveClassComplexity)
+ * @SuppressWarnings(PHPMD.CouplingBetweenObjects)
+ * @codeCoverageIgnore
  */
 class UpgradeDatabase extends Command
 {
@@ -68,7 +83,7 @@ class UpgradeDatabase extends Command
     /**
      * Execute the console command.
      */
-    public function handle()
+    public function handle(): int
     {
         $this->setTransactionIdentifier();
         $this->updateAccountCurrencies();
@@ -79,9 +94,158 @@ class UpgradeDatabase extends Command
         $this->line('Done updating currency information..');
         $this->migrateNotes();
         $this->migrateAttachmentData();
+        $this->migrateBillsToRules();
+
         $this->info('Firefly III database is up to date.');
 
-        return;
+        return 0;
+    }
+
+    /**
+     * Since it is one routine these warnings make sense and should be supressed.
+     *
+     * @SuppressWarnings(PHPMD.CyclomaticComplexity)
+     * @SuppressWarnings(PHPMD.ExcessiveMethodLength)
+     * @SuppressWarnings(PHPMD.NPathComplexity)
+     */
+    public function migrateBillsToRules(): void
+    {
+        foreach (User::get() as $user) {
+            /** @var Preference $lang */
+            $lang               = app('preferences')->getForUser($user, 'language', 'en_US');
+            $groupName          = (string)trans('firefly.rulegroup_for_bills_title', [], $lang->data);
+            $ruleGroup          = $user->ruleGroups()->where('title', $groupName)->first();
+            $currencyPreference = app('preferences')->getForUser($user, 'currencyPreference', config('firefly.default_currency', 'EUR'));
+
+            if (null === $currencyPreference) {
+                $this->error('User has no currency preference. Impossible.');
+
+                return;
+            }
+
+            $currency = TransactionCurrency::where('code', $currencyPreference->data)->first();
+            if (null === $currency) {
+                $this->line('Fall back to default currency in migrateBillsToRules().');
+                $currency = app('amount')->getDefaultCurrency();
+            }
+
+            if (null === $ruleGroup) {
+                $array     = RuleGroup::get(['order'])->pluck('order')->toArray();
+                $order     = \count($array) > 0 ? max($array) + 1 : 1;
+                $ruleGroup = RuleGroup::create(
+                    [
+                        'user_id'     => $user->id,
+                        'title'       => (string)trans('firefly.rulegroup_for_bills_title', [], $lang->data),
+                        'description' => (string)trans('firefly.rulegroup_for_bills_description', [], $lang->data),
+                        'order'       => $order,
+                        'active'      => 1,
+                    ]
+                );
+            }
+
+            // loop bills.
+            $order = 1;
+            /** @var Collection $collection */
+            $collection = $user->bills()->get();
+            /** @var Bill $bill */
+            foreach ($collection as $bill) {
+                if ('MIGRATED_TO_RULES' !== $bill->match) {
+                    $rule = Rule::create(
+                        [
+                            'user_id'         => $user->id,
+                            'rule_group_id'   => $ruleGroup->id,
+                            'title'           => (string)trans('firefly.rule_for_bill_title', ['name' => $bill->name], $lang->data),
+                            'description'     => (string)trans('firefly.rule_for_bill_description', ['name' => $bill->name], $lang->data),
+                            'order'           => $order,
+                            'active'          => $bill->active,
+                            'stop_processing' => 1,
+                        ]
+                    );
+                    // add default trigger
+                    RuleTrigger::create(
+                        [
+                            'rule_id'         => $rule->id,
+                            'trigger_type'    => 'user_action',
+                            'trigger_value'   => 'store-journal',
+                            'active'          => 1,
+                            'stop_processing' => 0,
+                            'order'           => 1,
+                        ]
+                    );
+                    // add trigger for description
+                    $match = implode(' ', explode(',', $bill->match));
+                    RuleTrigger::create(
+                        [
+                            'rule_id'         => $rule->id,
+                            'trigger_type'    => 'description_contains',
+                            'trigger_value'   => $match,
+                            'active'          => 1,
+                            'stop_processing' => 0,
+                            'order'           => 2,
+                        ]
+                    );
+                    if ($bill->amount_max !== $bill->amount_min) {
+                        // add triggers for amounts:
+                        RuleTrigger::create(
+                            [
+                                'rule_id'         => $rule->id,
+                                'trigger_type'    => 'amount_less',
+                                'trigger_value'   => round($bill->amount_max, $currency->decimal_places),
+                                'active'          => 1,
+                                'stop_processing' => 0,
+                                'order'           => 3,
+                            ]
+                        );
+                        RuleTrigger::create(
+                            [
+                                'rule_id'         => $rule->id,
+                                'trigger_type'    => 'amount_more',
+                                'trigger_value'   => round((float)$bill->amount_min, $currency->decimal_places),
+                                'active'          => 1,
+                                'stop_processing' => 0,
+                                'order'           => 4,
+                            ]
+                        );
+                    }
+                    if ($bill->amount_max === $bill->amount_min) {
+                        RuleTrigger::create(
+                            [
+                                'rule_id'         => $rule->id,
+                                'trigger_type'    => 'amount_exactly',
+                                'trigger_value'   => round((float)$bill->amount_min, $currency->decimal_places),
+                                'active'          => 1,
+                                'stop_processing' => 0,
+                                'order'           => 3,
+                            ]
+                        );
+                    }
+
+                    // create action
+                    RuleAction::create(
+                        [
+                            'rule_id'         => $rule->id,
+                            'action_type'     => 'link_to_bill',
+                            'action_value'    => $bill->name,
+                            'order'           => 1,
+                            'active'          => 1,
+                            'stop_processing' => 0,
+                        ]
+                    );
+
+                    $order++;
+                    $bill->match = 'MIGRATED_TO_RULES';
+                    $bill->save();
+                    $this->line(sprintf('Updated bill #%d ("%s") so it will use rules.', $bill->id, $bill->name));
+                }
+
+                // give bills a currency when they dont have one.
+                if (null === $bill->transaction_currency_id) {
+                    $this->line(sprintf('Gave bill #%d ("%s") a currency (%s).', $bill->id, $bill->name, $currency->name));
+                    $bill->transactionCurrency()->associate($currency);
+                    $bill->save();
+                }
+            }
+        }
     }
 
     /**
@@ -114,28 +278,33 @@ class UpgradeDatabase extends Command
             $this->updateJournalidentifiers((int)$journalId);
         }
 
-        return;
     }
 
     /**
      * Each (asset) account must have a reference to a preferred currency. If the account does not have one, it's forced upon the account.
      *
-     * @SuppressWarnings(PHPMD.CyclomaticComplexity) // it's seven but it can't really be helped.
+     * @SuppressWarnings(PHPMD.CyclomaticComplexity)
      * @SuppressWarnings(PHPMD.ExcessiveMethodLength)
      */
     public function updateAccountCurrencies(): void
     {
         $accounts = Account::leftJoin('account_types', 'account_types.id', '=', 'accounts.account_type_id')
                            ->whereIn('account_types.type', [AccountType::DEFAULT, AccountType::ASSET])->get(['accounts.*']);
-
+        /** @var AccountRepositoryInterface $repository */
+        $repository = app(AccountRepositoryInterface::class);
         $accounts->each(
-            function (Account $account) {
+            function (Account $account) use ($repository) {
+                $repository->setUser($account->user);
                 // get users preference, fall back to system pref.
-                $defaultCurrencyCode = Preferences::getForUser($account->user, 'currencyPreference', config('firefly.default_currency', 'EUR'))->data;
+                $defaultCurrencyCode = app('preferences')->getForUser($account->user, 'currencyPreference', config('firefly.default_currency', 'EUR'))->data;
                 $defaultCurrency     = TransactionCurrency::where('code', $defaultCurrencyCode)->first();
-                $accountCurrency     = (int)$account->getMeta('currency_id');
+                $accountCurrency     = (int)$repository->getMetaValue($account, 'currency_id');
                 $openingBalance      = $account->getOpeningBalance();
                 $obCurrency          = (int)$openingBalance->transaction_currency_id;
+
+                if (null === $defaultCurrency) {
+                    throw new UnexpectedValueException('The default currency is NULL, and this is more or less impossible.');
+                }
 
                 // both 0? set to default currency:
                 if (0 === $accountCurrency && 0 === $obCurrency) {
@@ -168,7 +337,6 @@ class UpgradeDatabase extends Command
             }
         );
 
-        return;
     }
 
     /**
@@ -178,19 +346,22 @@ class UpgradeDatabase extends Command
      * Both source and destination must match the respective currency preference of the related asset account.
      * So FF3 must verify all transactions.
      *
+     * @SuppressWarnings(PHPMD.CyclomaticComplexity)
      * @SuppressWarnings(PHPMD.ExcessiveMethodLength)
      */
     public function updateOtherCurrencies(): void
     {
         /** @var CurrencyRepositoryInterface $repository */
         $repository = app(CurrencyRepositoryInterface::class);
-        $set        = TransactionJournal
+        /** @var AccountRepositoryInterface $accountRepos */
+        $accountRepos = app(AccountRepositoryInterface::class);
+        $set          = TransactionJournal
             ::leftJoin('transaction_types', 'transaction_types.id', '=', 'transaction_journals.transaction_type_id')
             ->whereIn('transaction_types.type', [TransactionType::WITHDRAWAL, TransactionType::DEPOSIT, TransactionType::OPENING_BALANCE])
             ->get(['transaction_journals.*']);
 
         $set->each(
-            function (TransactionJournal $journal) use ($repository) {
+            function (TransactionJournal $journal) use ($repository, $accountRepos) {
                 // get the transaction with the asset account in it:
                 /** @var Transaction $transaction */
                 $transaction = $journal->transactions()
@@ -200,9 +371,13 @@ class UpgradeDatabase extends Command
                 if (null === $transaction) {
                     return;
                 }
+                $accountRepos->setUser($journal->user);
                 /** @var Account $account */
-                $account      = $transaction->account;
-                $currency     = $repository->find((int)$account->getMeta('currency_id'));
+                $account  = $transaction->account;
+                $currency = $repository->findNull((int)$accountRepos->getMetaValue($account, 'currency_id'));
+                if (null === $currency) {
+                    return;
+                }
                 $transactions = $journal->transactions()->get();
                 $transactions->each(
                     function (Transaction $transaction) use ($currency) {
@@ -226,7 +401,6 @@ class UpgradeDatabase extends Command
             }
         );
 
-        return;
     }
 
     /**
@@ -239,7 +413,7 @@ class UpgradeDatabase extends Command
      * Both source and destination must match the respective currency preference. So FF3 must verify ALL
      * transactions.
      */
-    public function updateTransferCurrencies()
+    public function updateTransferCurrencies(): void
     {
         $set = TransactionJournal
             ::leftJoin('transaction_types', 'transaction_types.id', '=', 'transaction_journals.transaction_type_id')
@@ -287,7 +461,7 @@ class UpgradeDatabase extends Command
 
             // move description:
             $description = (string)$att->description;
-            if (strlen($description) > 0) {
+            if (\strlen($description) > 0) {
                 // find or create note:
                 $note = $att->notes()->first();
                 if (null === $note) {
@@ -311,6 +485,7 @@ class UpgradeDatabase extends Command
      */
     private function migrateNotes(): void
     {
+        /** @noinspection PhpUndefinedMethodInspection */
         $set = TransactionJournalMeta::whereName('notes')->get();
         /** @var TransactionJournalMeta $meta */
         foreach ($set as $meta) {
@@ -341,8 +516,15 @@ class UpgradeDatabase extends Command
     {
         /** @var CurrencyRepositoryInterface $repository */
         $repository = app(CurrencyRepositoryInterface::class);
-        $currency   = $repository->find((int)$transaction->account->getMeta('currency_id'));
-        $journal    = $transaction->transactionJournal;
+        /** @var AccountRepositoryInterface $accountRepos */
+        $accountRepos = app(AccountRepositoryInterface::class);
+        $accountRepos->setUser($transaction->account->user);
+        $currency = $repository->findNull((int)$accountRepos->getMetaValue($transaction->account, 'currency_id'));
+        $journal  = $transaction->transactionJournal;
+
+        if (null === $currency) {
+            return;
+        }
 
         if (!((int)$currency->id === (int)$journal->transaction_currency_id)) {
             $this->line(
@@ -358,7 +540,6 @@ class UpgradeDatabase extends Command
             $journal->save();
         }
 
-        return;
     }
 
     /**
@@ -404,7 +585,6 @@ class UpgradeDatabase extends Command
             ++$identifier;
         }
 
-        return;
     }
 
     /**
@@ -413,11 +593,11 @@ class UpgradeDatabase extends Command
      *
      * The transaction that is sent to this function MUST be the source transaction (amount negative).
      *
-     * Method is long and complex bit I'm taking it for granted.
+     * Method is long and complex but I'll allow it. https://imgur.com/gallery/dVDJiez
      *
+     * @SuppressWarnings(PHPMD.CyclomaticComplexity)
      * @SuppressWarnings(PHPMD.ExcessiveMethodLength)
      * @SuppressWarnings(PHPMD.NPathComplexity)
-     * @SuppressWarnings(PHPMD.CyclomaticComplexity)
      *
      * @param Transaction $transaction
      */
@@ -425,7 +605,20 @@ class UpgradeDatabase extends Command
     {
         /** @var CurrencyRepositoryInterface $repository */
         $repository = app(CurrencyRepositoryInterface::class);
-        $currency   = $repository->find((int)$transaction->account->getMeta('currency_id'));
+        /** @var AccountRepositoryInterface $accountRepos */
+        $accountRepos = app(AccountRepositoryInterface::class);
+        /** @var JournalRepositoryInterface $journalRepos */
+        $journalRepos = app(JournalRepositoryInterface::class);
+
+        $accountRepos->setUser($transaction->account->user);
+        $journalRepos->setUser($transaction->account->user);
+        $currency = $repository->findNull((int)$accountRepos->getMetaValue($transaction->account, 'currency_id'));
+
+        if (null === $currency) {
+            Log::error(sprintf('Account #%d ("%s") must have currency preference but has none.', $transaction->account->id, $transaction->account->name));
+
+            return;
+        }
 
         // has no currency ID? Must have, so fill in using account preference:
         if (null === $transaction->transaction_currency_id) {
@@ -455,9 +648,9 @@ class UpgradeDatabase extends Command
         $journal = $transaction->transactionJournal;
         /** @var Transaction $opposing */
         $opposing         = $journal->transactions()->where('amount', '>', 0)->where('identifier', $transaction->identifier)->first();
-        $opposingCurrency = $repository->find((int)$opposing->account->getMeta('currency_id'));
+        $opposingCurrency = $repository->findNull((int)$accountRepos->getMetaValue($opposing->account, 'currency_id'));
 
-        if (null === $opposingCurrency->id) {
+        if (null === $opposingCurrency) {
             Log::error(sprintf('Account #%d ("%s") must have currency preference but has none.', $opposing->account->id, $opposing->account->name));
 
             return;
@@ -473,7 +666,16 @@ class UpgradeDatabase extends Command
             $opposing->transaction_currency_id = $currency->id;
             $transaction->save();
             $opposing->save();
-            Log::debug(sprintf('Cleaned up transaction #%d and #%d', $transaction->id, $opposing->id));
+            Log::debug(
+                sprintf(
+                    'Currency for account "%s" is %s, and currency for account "%s" is also
+             %s, so %s #%d (#%d and #%d) has been verified to be to %s exclusively.',
+                    $opposing->account->name, $opposingCurrency->code,
+                    $transaction->account->name, $transaction->transactionCurrency->code,
+                    $journal->transactionType->type, $journal->id,
+                    $transaction->id, $opposing->id, $currency->code
+                )
+            );
 
             return;
         }
@@ -502,7 +704,7 @@ class UpgradeDatabase extends Command
 
         // when both are zero, try to grab it from journal:
         if (null === $opposing->foreign_amount && null === $transaction->foreign_amount) {
-            $foreignAmount = $journal->getMeta('foreign_amount');
+            $foreignAmount = $journalRepos->getMetaField($journal, 'foreign_amount');
             if (null === $foreignAmount) {
                 Log::debug(sprintf('Journal #%d has missing foreign currency data, forced to do 1:1 conversion :(.', $transaction->transaction_journal_id));
                 $transaction->foreign_amount = bcmul((string)$transaction->amount, '-1');
@@ -526,7 +728,6 @@ class UpgradeDatabase extends Command
             $opposing->save();
         }
 
-        return;
     }
 
 }

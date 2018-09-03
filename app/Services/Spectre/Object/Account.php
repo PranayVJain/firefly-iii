@@ -27,6 +27,9 @@ use Carbon\Carbon;
 
 /**
  * Class Account
+ *
+ * @codeCoverageIgnore
+ * @SuppressWarnings(PHPMD.ShortVariable)
  */
 class Account extends SpectreObject
 {
@@ -56,7 +59,7 @@ class Account extends SpectreObject
      */
     public function __construct(array $data)
     {
-        $this->id           = $data['id'];
+        $this->id           = (int)$data['id'];
         $this->loginId      = $data['login_id'];
         $this->currencyCode = $data['currency_code'];
         $this->balance      = $data['balance'];
@@ -64,10 +67,34 @@ class Account extends SpectreObject
         $this->nature       = $data['nature'];
         $this->createdAt    = new Carbon($data['created_at']);
         $this->updatedAt    = new Carbon($data['updated_at']);
-
-        foreach ($data['extra'] as $key => $value) {
+        $extraArray         = \is_array($data['extra']) ? $data['extra'] : [];
+        foreach ($extraArray as $key => $value) {
             $this->extra[$key] = $value;
         }
+    }
+
+    /**
+     * @return float
+     */
+    public function getBalance(): float
+    {
+        return $this->balance;
+    }
+
+    /**
+     * @return string
+     */
+    public function getCurrencyCode(): string
+    {
+        return $this->currencyCode;
+    }
+
+    /**
+     * @return array
+     */
+    public function getExtra(): array
+    {
+        return $this->extra;
     }
 
     /**
@@ -84,6 +111,14 @@ class Account extends SpectreObject
     public function getName(): string
     {
         return $this->name;
+    }
+
+    /**
+     * @return string
+     */
+    public function getNature(): string
+    {
+        return $this->nature;
     }
 
     /**

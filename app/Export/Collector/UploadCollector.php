@@ -1,8 +1,7 @@
 <?php
-declare(strict_types=1);
 /**
  * UploadCollector.php
- * Copyright (c) 2017 thegrumpydictator@gmail.com
+ * Copyright (c) 2018 thegrumpydictator@gmail.com
  *
  * This file is part of Firefly III.
  *
@@ -20,6 +19,8 @@ declare(strict_types=1);
  * along with Firefly III. If not, see <http://www.gnu.org/licenses/>.
  */
 
+declare(strict_types=1);
+
 namespace FireflyIII\Export\Collector;
 
 use Crypt;
@@ -30,6 +31,9 @@ use Storage;
 
 /**
  * Class UploadCollector.
+ *
+ * @codeCoverageIgnore
+ * @deprecated
  */
 class UploadCollector extends BasicCollector implements CollectorInterface
 {
@@ -82,7 +86,10 @@ class UploadCollector extends BasicCollector implements CollectorInterface
         return true;
     }
 
+    /** @noinspection MultipleReturnStatementsInspection */
     /**
+     * Process new file uploads.
+     *
      * @param string $key
      *
      * @return bool
@@ -103,7 +110,7 @@ class UploadCollector extends BasicCollector implements CollectorInterface
             Log::error(sprintf('Could not decrypt old import file "%s". Skipped because: %s', $key, $e->getMessage()));
         }
 
-        if (strlen($content) > 0) {
+        if (\strlen($content) > 0) {
             // add to export disk.
             $date = $job->created_at->format('Y-m-d');
             $file = sprintf('%s-Old %s import dated %s.%s', $this->job->key, strtoupper($job->file_type), $date, $job->file_type);

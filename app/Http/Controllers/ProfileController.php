@@ -35,25 +35,27 @@ use FireflyIII\Http\Requests\ProfileFormRequest;
 use FireflyIII\Http\Requests\TokenFormRequest;
 use FireflyIII\Models\Preference;
 use FireflyIII\Repositories\User\UserRepositoryInterface;
+use FireflyIII\Support\Http\Controllers\CreateStuff;
+use FireflyIII\Support\Http\Controllers\RequestInformation;
 use FireflyIII\User;
 use Google2FA;
 use Hash;
 use Illuminate\Contracts\Auth\Guard;
+use Illuminate\Support\Collection;
 use Laravel\Passport\ClientRepository;
-use Laravel\Passport\Passport;
 use Log;
-use phpseclib\Crypt\RSA;
-use Preferences;
-use Session;
-use View;
 
 /**
  * Class ProfileController.
  *
  * @method Guard guard()
+ * @SuppressWarnings(PHPMD.CouplingBetweenObjects)
+ * @SuppressWarnings(PHPMD.TooManyPublicMethods)
  */
 class ProfileController extends Controller
 {
+    use RequestInformation, CreateStuff;
+
     /**
      * ProfileController constructor.
      */
@@ -63,7 +65,7 @@ class ProfileController extends Controller
 
         $this->middleware(
             function ($request, $next) {
-                app('view')->share('title', trans('firefly.profile'));
+                app('view')->share('title', (string)trans('firefly.profile'));
                 app('view')->share('mainTitleIcon', 'fa-user');
 
                 return $next($request);
@@ -74,7 +76,9 @@ class ProfileController extends Controller
     }
 
     /**
-     * @return View
+     * Change your email address.
+     *
+     * @return \Illuminate\Contracts\View\Factory|\Illuminate\View\View
      */
     public function changeEmail()
     {
@@ -87,7 +91,9 @@ class ProfileController extends Controller
     }
 
     /**
-     * @return View
+     * Change your password.
+     *
+     * @return \Illuminate\Contracts\View\Factory|\Illuminate\View\View
      */
     public function changePassword()
     {
@@ -101,19 +107,22 @@ class ProfileController extends Controller
     /**
      * View that generates a 2FA code for the user.
      *
-     * @return View
+     * @return \Illuminate\Contracts\View\Factory|\Illuminate\View\View
      */
     public function code()
     {
         $domain = $this->getDomain();
         $secret = Google2FA::generateSecretKey();
-        Session::flash('two-factor-secret', $secret);
+        session()->flash('two-factor-secret', $secret);
+
         $image = Google2FA::getQRCodeInline($domain, auth()->user()->email, $secret, 200);
 
-        return view('profile.code', compact('image'));
+        return view('profile.code', compact('image', 'secret'));
     }
 
     /**
+     * Screen to confirm email change.
+     *
      * @param UserRepositoryInterface $repository
      * @param string                  $token
      *
@@ -124,7 +133,8 @@ class ProfileController extends Controller
     public function confirmEmailChange(UserRepositoryInterface $repository, string $token)
     {
         // find preference with this token value.
-        $set  = Preferences::findByName('email_change_confirm_token');
+        /** @var Collection $set */
+        $set  = app('preferences')->findByName('email_change_confirm_token');
         $user = null;
         Log::debug(sprintf('Found %d preferences', $set->count()));
         /** @var Preference $preference */
@@ -143,13 +153,15 @@ class ProfileController extends Controller
         $repository->unblockUser($user);
 
         // return to login.
-        Session::flash('success', (string)trans('firefly.login_with_new_email'));
+        session()->flash('success', (string)trans('firefly.login_with_new_email'));
 
         return redirect(route('login'));
     }
 
     /**
-     * @return View
+     * Delete your account view.
+     *
+     * @return \Illuminate\Contracts\View\Factory|\Illuminate\View\View
      */
     public function deleteAccount()
     {
@@ -161,45 +173,46 @@ class ProfileController extends Controller
     }
 
     /**
+     * Delete 2FA routine.
+     *
      * @return \Illuminate\Http\RedirectResponse|\Illuminate\Routing\Redirector
      */
     public function deleteCode()
     {
-        Preferences::delete('twoFactorAuthEnabled');
-        Preferences::delete('twoFactorAuthSecret');
-        Session::flash('success', (string)trans('firefly.pref_two_factor_auth_disabled'));
-        Session::flash('info', (string)trans('firefly.pref_two_factor_auth_remove_it'));
+        app('preferences')->delete('twoFactorAuthEnabled');
+        app('preferences')->delete('twoFactorAuthSecret');
+        session()->flash('success', (string)trans('firefly.pref_two_factor_auth_disabled'));
+        session()->flash('info', (string)trans('firefly.pref_two_factor_auth_remove_it'));
 
         return redirect(route('profile.index'));
     }
 
     /**
-     * @param UserRepositoryInterface $repository
+     * Enable 2FA screen.
      *
      * @return \Illuminate\Http\RedirectResponse|\Illuminate\Routing\Redirector
      */
-    public function enable2FA(UserRepositoryInterface $repository)
+    public function enable2FA()
     {
-        if ($repository->hasRole(auth()->user(), 'demo')) {
-            return redirect(route('profile.index'));
-        }
-        $hasTwoFactorAuthSecret = (null !== Preferences::get('twoFactorAuthSecret'));
+        $hasSecret = (null !== app('preferences')->get('twoFactorAuthSecret'));
 
         // if we don't have a valid secret yet, redirect to the code page to get one.
-        if (!$hasTwoFactorAuthSecret) {
+        if (!$hasSecret) {
             return redirect(route('profile.code'));
         }
 
         // If FF3 already has a secret, just set the two factor auth enabled to 1,
         // and let the user continue with the existing secret.
 
-        Preferences::set('twoFactorAuthEnabled', 1);
+        app('preferences')->set('twoFactorAuthEnabled', 1);
 
         return redirect(route('profile.index'));
     }
 
     /**
-     * @return View
+     * Index for profile.
+     *
+     * @return \Illuminate\Contracts\View\Factory|\Illuminate\View\View
      */
     public function index()
     {
@@ -210,26 +223,30 @@ class ProfileController extends Controller
 
         $this->createOAuthKeys();
 
-        if ($count === 0) {
+        if (0 === $count) {
             /** @var ClientRepository $repository */
             $repository = app(ClientRepository::class);
             $repository->createPersonalAccessClient(null, config('app.name') . ' Personal Access Client', 'http://localhost');
         }
         $subTitle   = auth()->user()->email;
         $userId     = auth()->user()->id;
-        $enabled2FA = (int)Preferences::get('twoFactorAuthEnabled', 0)->data === 1;
+        $enabled2FA = 1 === (int)app('preferences')->get('twoFactorAuthEnabled', 0)->data;
+        /** @var User $user */
+        $user = auth()->user();
 
         // get access token or create one.
-        $accessToken = Preferences::get('access_token', null);
+        $accessToken = app('preferences')->get('access_token', null);
         if (null === $accessToken) {
-            $token       = auth()->user()->generateAccessToken();
-            $accessToken = Preferences::set('access_token', $token);
+            $token       = $user->generateAccessToken();
+            $accessToken = app('preferences')->set('access_token', $token);
         }
 
         return view('profile.index', compact('subTitle', 'userId', 'accessToken', 'enabled2FA'));
     }
 
     /**
+     * Submit the change email form.
+     *
      * @param EmailFormRequest        $request
      * @param UserRepositoryInterface $repository
      *
@@ -242,7 +259,7 @@ class ProfileController extends Controller
         $newEmail = $request->string('email');
         $oldEmail = $user->email;
         if ($newEmail === $user->email) {
-            Session::flash('error', (string)trans('firefly.email_not_changed'));
+            session()->flash('error', (string)trans('firefly.email_not_changed'));
 
             return redirect(route('profile.change-email'))->withInput();
         }
@@ -252,7 +269,7 @@ class ProfileController extends Controller
             Auth::guard()->logout();
             $request->session()->invalidate();
 
-            Session::flash('success', (string)trans('firefly.email_changed'));
+            session()->flash('success', (string)trans('firefly.email_changed'));
 
             return redirect(route('index'));
         }
@@ -267,12 +284,14 @@ class ProfileController extends Controller
         // force user logout.
         Auth::guard()->logout();
         $request->session()->invalidate();
-        Session::flash('success', (string)trans('firefly.email_changed'));
+        session()->flash('success', (string)trans('firefly.email_changed'));
 
         return redirect(route('index'));
     }
 
     /**
+     * Submit change password form.
+     *
      * @param ProfileFormRequest      $request
      * @param UserRepositoryInterface $repository
      *
@@ -283,39 +302,46 @@ class ProfileController extends Controller
         // the request has already validated both new passwords must be equal.
         $current = $request->get('current_password');
         $new     = $request->get('new_password');
-
+        /** @var User $user */
+        $user = auth()->user();
         try {
-            $this->validatePassword(auth()->user(), $current, $new);
+            $this->validatePassword($user, $current, $new);
         } catch (ValidationException $e) {
-            Session::flash('error', $e->getMessage());
+            session()->flash('error', $e->getMessage());
 
             return redirect(route('profile.change-password'));
         }
 
-        $repository->changePassword(auth()->user(), $request->get('new_password'));
-        Session::flash('success', (string)trans('firefly.password_changed'));
+        $repository->changePassword($user, $request->get('new_password'));
+        session()->flash('success', (string)trans('firefly.password_changed'));
 
         return redirect(route('profile.index'));
     }
 
+    /** @noinspection PhpUnusedParameterInspection */
     /**
+     * Submit 2FA for the first time.
+     *
      * @param TokenFormRequest $request
      *
      * @return \Illuminate\Http\RedirectResponse|\Illuminate\Routing\Redirector
-     * @SuppressWarnings(PHPMD.UnusedFormalParameter) // it's unused but the class does some validation.
+     *
+     * @SuppressWarnings(PHPMD.UnusedFormalParameter)
      */
     public function postCode(TokenFormRequest $request)
     {
-        Preferences::set('twoFactorAuthEnabled', 1);
-        Preferences::set('twoFactorAuthSecret', Session::get('two-factor-secret'));
+        app('preferences')->set('twoFactorAuthEnabled', 1);
+        app('preferences')->set('twoFactorAuthSecret', session()->get('two-factor-secret'));
 
-        Session::flash('success', (string)trans('firefly.saved_preferences'));
-        Preferences::mark();
+        session()->flash('success', (string)trans('firefly.saved_preferences'));
+        app('preferences')->mark();
 
         return redirect(route('profile.index'));
     }
 
     /**
+     * Submit delete account.
+     *
      * @param UserRepositoryInterface  $repository
      * @param DeleteAccountFormRequest $request
      *
@@ -324,33 +350,40 @@ class ProfileController extends Controller
     public function postDeleteAccount(UserRepositoryInterface $repository, DeleteAccountFormRequest $request)
     {
         if (!Hash::check($request->get('password'), auth()->user()->password)) {
-            Session::flash('error', (string)trans('firefly.invalid_password'));
+            session()->flash('error', (string)trans('firefly.invalid_password'));
 
             return redirect(route('profile.delete-account'));
         }
+        /** @var User $user */
         $user = auth()->user();
         Log::info(sprintf('User #%d has opted to delete their account', auth()->user()->id));
         // make repository delete user:
         auth()->logout();
-        Session::flush();
+        session()->flush();
         $repository->destroy($user);
 
         return redirect(route('index'));
     }
 
     /**
+     * Regenerate access token.
+     *
      * @return \Illuminate\Http\RedirectResponse|\Illuminate\Routing\Redirector
      */
     public function regenerate()
     {
-        $token = auth()->user()->generateAccessToken();
-        Preferences::set('access_token', $token);
-        Session::flash('success', (string)trans('firefly.token_regenerated'));
+        /** @var User $user */
+        $user  = auth()->user();
+        $token = $user->generateAccessToken();
+        app('preferences')->set('access_token', $token);
+        session()->flash('success', (string)trans('firefly.token_regenerated'));
 
         return redirect(route('profile.index'));
     }
 
     /**
+     * Undo change of user email address.
+     *
      * @param UserRepositoryInterface $repository
      * @param string                  $token
      * @param string                  $hash
@@ -358,11 +391,13 @@ class ProfileController extends Controller
      * @return \Illuminate\Http\RedirectResponse|\Illuminate\Routing\Redirector
      *
      * @throws FireflyException
+     *
+     * @SuppressWarnings(PHPMD.CyclomaticComplexity)
      */
     public function undoEmailChange(UserRepositoryInterface $repository, string $token, string $hash)
     {
         // find preference with this token value.
-        $set  = Preferences::findByName('email_change_undo_token');
+        $set  = app('preferences')->findByName('email_change_undo_token');
         $user = null;
         /** @var Preference $preference */
         foreach ($set as $preference) {
@@ -374,9 +409,8 @@ class ProfileController extends Controller
             throw new FireflyException('Invalid token.');
         }
 
-        // found user.
-        // which email address to return to?
-        $set = Preferences::beginsWith($user, 'previous_email_');
+        // found user.which email address to return to?
+        $set = app('preferences')->beginsWith($user, 'previous_email_');
         /** @var string $match */
         $match = null;
         foreach ($set as $entry) {
@@ -395,63 +429,10 @@ class ProfileController extends Controller
         $repository->unblockUser($user);
 
         // return to login.
-        Session::flash('success', (string)trans('firefly.login_with_old_email'));
+        session()->flash('success', (string)trans('firefly.login_with_old_email'));
 
         return redirect(route('login'));
     }
 
-    /**
-     * @param User   $user
-     * @param string $current
-     * @param string $new
-     *
-     * @return bool
-     *
-     * @throws ValidationException
-     */
-    protected function validatePassword(User $user, string $current, string $new): bool
-    {
-        if (!Hash::check($current, $user->password)) {
-            throw new ValidationException((string)trans('firefly.invalid_current_password'));
-        }
 
-        if ($current === $new) {
-            throw new ValidationException((string)trans('firefly.should_change'));
-        }
-
-        return true;
-    }
-
-    /**
-     *
-     */
-    private function createOAuthKeys()
-    {
-        $rsa  = new RSA();
-        $keys = $rsa->createKey(4096);
-
-        [$publicKey, $privateKey] = [
-            Passport::keyPath('oauth-public.key'),
-            Passport::keyPath('oauth-private.key'),
-        ];
-
-        if (file_exists($publicKey) || file_exists($privateKey)) {
-            return;
-        }
-        Log::alert('NO OAuth keys were found. They have been created.');
-
-        file_put_contents($publicKey, array_get($keys, 'publickey'));
-        file_put_contents($privateKey, array_get($keys, 'privatekey'));
-    }
-
-    /**
-     * @return string
-     */
-    private function getDomain(): string
-    {
-        $url   = url()->to('/');
-        $parts = parse_url($url);
-
-        return $parts['host'];
-    }
 }

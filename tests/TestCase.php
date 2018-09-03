@@ -24,9 +24,11 @@ declare(strict_types=1);
 namespace Tests;
 
 use Carbon\Carbon;
+use DB;
 use Exception;
 use FireflyIII\Models\Preference;
 use FireflyIII\Models\TransactionJournal;
+use FireflyIII\Models\TransactionType;
 use FireflyIII\Repositories\Journal\JournalRepositoryInterface;
 use FireflyIII\User;
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
@@ -41,20 +43,19 @@ use Mockery;
 abstract class TestCase extends BaseTestCase
 {
 
-
-
     /**
      * @param User   $user
      * @param string $range
      */
-    public function changeDateRange(User $user, $range)
+    public function changeDateRange(User $user, $range): void
     {
         $valid = ['1D', '1W', '1M', '3M', '6M', '1Y', 'custom'];
-        if (in_array($range, $valid)) {
+        if (\in_array($range, $valid)) {
             try {
                 Preference::where('user_id', $user->id)->where('name', 'viewRange')->delete();
             } catch (Exception $e) {
                 // don't care.
+                $e->getMessage();
             }
 
             Preference::create(
@@ -76,12 +77,10 @@ abstract class TestCase extends BaseTestCase
         }
     }
 
-    use CreatesApplication;
-
     /**
      * @return array
      */
-    public function dateRangeProvider()
+    public function dateRangeProvider(): array
     {
         return [
             'one day'      => ['1D'],
@@ -93,6 +92,8 @@ abstract class TestCase extends BaseTestCase
             'custom range' => ['custom'],
         ];
     }
+
+    use CreatesApplication;
 
     /**
      * @return User
@@ -111,6 +112,40 @@ abstract class TestCase extends BaseTestCase
     }
 
     /**
+     * @return TransactionJournal
+     */
+    public function getRandomDeposit(): TransactionJournal
+    {
+        return $this->getRandomJournal(TransactionType::DEPOSIT);
+    }
+
+    /**
+     * @return TransactionJournal
+     */
+    public function getRandomTransfer(): TransactionJournal
+    {
+        return $this->getRandomJournal(TransactionType::TRANSFER);
+    }
+
+    /**
+     * @return TransactionJournal
+     */
+    public function getRandomWithdrawal(): TransactionJournal
+    {
+        return $this->getRandomJournal(TransactionType::WITHDRAWAL);
+    }
+
+    /**
+     *
+     */
+    public function setUp(): void
+    {
+        parent::setUp();
+        $repository = $this->mock(JournalRepositoryInterface::class);
+        $repository->shouldReceive('firstNull')->andReturn(new TransactionJournal);
+    }
+
+    /**
      * @return User
      */
     public function user(): User
@@ -123,7 +158,7 @@ abstract class TestCase extends BaseTestCase
      *
      * @return \Mockery\MockInterface
      */
-    protected function mock($class)
+    protected function mock($class): \Mockery\MockInterface
     {
         Log::debug(sprintf('Will now mock %s', $class));
         $object = Mockery::mock($class);
@@ -137,19 +172,37 @@ abstract class TestCase extends BaseTestCase
      *
      * @return Mockery\MockInterface
      */
-    protected function overload(string $class)
+    protected function overload(string $class): \Mockery\MockInterface
     {
         //$this->app->instance($class, $externalMock);
         return Mockery::mock('overload:' . $class);
     }
 
     /**
+     * @param string $type
      *
+     * @return TransactionJournal
      */
-    protected function setUp()
+    private function getRandomJournal(string $type): TransactionJournal
     {
-        parent::setUp();
-        $repository = $this->mock(JournalRepositoryInterface::class);
-        $repository->shouldReceive('first')->andReturn(new TransactionJournal);
+        $query  = DB::table('transactions')
+                    ->leftJoin('transaction_journals', 'transaction_journals.id', '=', 'transactions.transaction_journal_id')
+                    ->leftJoin('transaction_types', 'transaction_types.id', '=', 'transaction_journals.transaction_type_id')
+                    ->where('transaction_journals.user_id', $this->user()->id)
+                    ->whereNull('transaction_journals.deleted_at')
+                    ->whereNull('transactions.deleted_at')
+                    ->where('transaction_types.type', $type)
+                    ->groupBy('transactions.transaction_journal_id')
+                    ->having('ct', '=', 2)
+                    ->inRandomOrder()->take(1);
+        $result = $query->get(
+            [
+                'transactions.transaction_journal_id',
+                'transaction_journalstransaction_type_id',
+                DB::raw('COUNT(transaction_journal_id) as ct'),
+            ]
+        )->first();
+
+        return TransactionJournal::find((int)$result->transaction_journal_id);
     }
 }

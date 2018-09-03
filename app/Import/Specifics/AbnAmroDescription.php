@@ -32,29 +32,39 @@ namespace FireflyIII\Import\Specifics;
  */
 class AbnAmroDescription implements SpecificInterface
 {
-    /** @var array */
+    /** @var array The current row. */
     public $row;
 
     /**
+     * Description of this specific fix.
+     *
      * @return string
+     * @codeCoverageIgnore
      */
     public static function getDescription(): string
     {
-        return 'Fixes possible problems with ABN Amro descriptions.';
+        return 'import.specific_abn_descr';
     }
 
     /**
+     * Name of specific fix.
+     *
      * @return string
+     * @codeCoverageIgnore
      */
     public static function getName(): string
     {
-        return 'ABN Amro description';
+        return 'import.specific_abn_name';
     }
 
     /**
+     * Run the fix.
+     *
      * @param array $row
      *
      * @return array
+     *
+     * @SuppressWarnings(PHPMD.CyclomaticComplexity)
      */
     public function run(array $row): array
     {
@@ -70,7 +80,7 @@ class AbnAmroDescription implements SpecificInterface
         // If the description could not be parsed, specify an unknown opposing
         // account, as an opposing account is required
         if (!$parsed) {
-            $this->row[8] = trans('firefly.unknown'); // opposing-account-name
+            $this->row[8] = (string)trans('firefly.unknown'); // opposing-account-name
         }
 
         return $this->row;
@@ -81,7 +91,7 @@ class AbnAmroDescription implements SpecificInterface
      *
      * @return bool true if the description is GEA/BEA-format, false otherwise
      */
-    protected function parseABNAMRODescription()
+    protected function parseABNAMRODescription(): bool
     {
         // See if the current description is formatted in ABN AMRO format
         if (preg_match('/ABN AMRO.{24} (.*)/', $this->row[7], $matches)) {
@@ -99,7 +109,7 @@ class AbnAmroDescription implements SpecificInterface
      *
      * @return bool true if the description is GEA/BEAformat, false otherwise
      */
-    protected function parseGEABEADescription()
+    protected function parseGEABEADescription(): bool
     {
         // See if the current description is formatted in GEA/BEA format
         if (preg_match('/([BG]EA) +(NR:[a-zA-Z:0-9]+) +([0-9.\/]+) +([^,]*)/', $this->row[7], $matches)) {
@@ -120,11 +130,12 @@ class AbnAmroDescription implements SpecificInterface
     /**
      * Parses the current description in SEPA format.
      *
-     * @SuppressWarnings(PHPMD.CyclomaticComplexity)
-     *
      * @return bool true if the description is SEPA format, false otherwise
+     *
+     * @SuppressWarnings(PHPMD.CyclomaticComplexity)
+     * @SuppressWarnings(PHPMD.ExcessiveMethodLength)
      */
-    protected function parseSepaDescription()
+    protected function parseSepaDescription(): bool
     {
         // See if the current description is formatted as a SEPA plain description
         if (preg_match('/^SEPA(.{28})/', $this->row[7], $matches)) {
@@ -136,7 +147,7 @@ class AbnAmroDescription implements SpecificInterface
             // SEPA plain descriptions contain several key-value pairs, split by a colon
             preg_match_all('/([A-Za-z]+(?=:\s)):\s([A-Za-z 0-9._#-]+(?=\s|$))/', $this->row[7], $matches, PREG_SET_ORDER);
 
-            if (is_array($matches)) {
+            if (\is_array($matches)) {
                 foreach ($matches as $match) {
                     $key   = $match[1];
                     $value = trim($match[2]);
@@ -163,7 +174,7 @@ class AbnAmroDescription implements SpecificInterface
             // Set a new description for the current transaction. If none was given
             // set the description to type, name and reference
             $this->row[7] = $newDescription;
-            if (0 === strlen($newDescription)) {
+            if ('' === $newDescription) {
                 $this->row[7] = sprintf('%s - %s (%s)', $type, $name, $reference);
             }
 
@@ -177,8 +188,11 @@ class AbnAmroDescription implements SpecificInterface
      * Parses the current description in TRTP format.
      *
      * @return bool true if the description is TRTP format, false otherwise
+     *
+     * @SuppressWarnings(PHPMD.CyclomaticComplexity)
+     * @SuppressWarnings(PHPMD.ExcessiveMethodLength)
      */
-    protected function parseTRTPDescription()
+    protected function parseTRTPDescription(): bool
     {
         // See if the current description is formatted in TRTP format
         if (preg_match_all('!\/([A-Z]{3,4})\/([^/]*)!', $this->row[7], $matches, PREG_SET_ORDER)) {
@@ -189,14 +203,14 @@ class AbnAmroDescription implements SpecificInterface
 
             // Search for properties specified in the TRTP format. If no description
             // is provided, use the type, name and reference as new description
-            if (is_array($matches)) {
+            if (\is_array($matches)) {
                 foreach ($matches as $match) {
                     $key   = $match[1];
                     $value = trim($match[2]);
 
                     switch (strtoupper($key)) {
                         case 'NAME':
-                            $this->row[8] = $name = $value;
+                            $this->row[8] = $value;
                             break;
                         case 'REMI':
                             $newDescription = $value;
@@ -218,7 +232,7 @@ class AbnAmroDescription implements SpecificInterface
                 // Set a new description for the current transaction. If none was given
                 // set the description to type, name and reference
                 $this->row[7] = $newDescription;
-                if (0 === strlen($newDescription)) {
+                if ('' === $newDescription) {
                     $this->row[7] = sprintf('%s - %s (%s)', $type, $name, $reference);
                 }
             }

@@ -1,8 +1,7 @@
 <?php
-declare(strict_types=1);
 /**
  * ScanAttachments.php
- * Copyright (c) 2017 thegrumpydictator@gmail.com
+ * Copyright (c) 2018 thegrumpydictator@gmail.com
  *
  * This file is part of Firefly III.
  *
@@ -20,6 +19,10 @@ declare(strict_types=1);
  * along with Firefly III. If not, see <http://www.gnu.org/licenses/>.
  */
 
+/** @noinspection PhpDynamicAsStaticMethodCallInspection */
+
+declare(strict_types=1);
+
 namespace FireflyIII\Console\Commands;
 
 use Crypt;
@@ -31,6 +34,8 @@ use Storage;
 
 /**
  * Class ScanAttachments.
+ *
+ * @codeCoverageIgnore
  */
 class ScanAttachments extends Command
 {
@@ -51,7 +56,7 @@ class ScanAttachments extends Command
     /**
      * Execute the console command.
      */
-    public function handle()
+    public function handle(): int
     {
         $attachments = Attachment::get();
         $disk        = Storage::disk('upload');
@@ -61,13 +66,13 @@ class ScanAttachments extends Command
             try {
                 $content = $disk->get($fileName);
             } catch (FileNotFoundException $e) {
-                $this->error(sprintf('Could not find data for attachment #%d', $attachment->id));
+                $this->error(sprintf('Could not find data for attachment #%d: %s', $attachment->id, $e->getMessage()));
                 continue;
             }
             try {
                 $decrypted = Crypt::decrypt($content);
             } catch (DecryptException $e) {
-                $this->error(sprintf('Could not decrypt data of attachment #%d', $attachment->id));
+                $this->error(sprintf('Could not decrypt data of attachment #%d: %s', $attachment->id, $e->getMessage()));
                 continue;
             }
             $tmpfname = tempnam(sys_get_temp_dir(), 'FireflyIII');
@@ -79,5 +84,7 @@ class ScanAttachments extends Command
             $attachment->save();
             $this->line(sprintf('Fixed attachment #%d', $attachment->id));
         }
+
+        return 0;
     }
 }

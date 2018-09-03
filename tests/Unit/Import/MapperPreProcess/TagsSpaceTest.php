@@ -33,9 +33,9 @@ class TagsSpaceTest extends TestCase
 {
 
     /**
-     * \FireflyIII\Import\MapperPreProcess\TagsSpace::run
+     * \FireflyIII\Import\MapperPreProcess\TagsSpace
      */
-    public function testBasic()
+    public function testBasic(): void
     {
         $input  = 'some tags with  spaces,and without  ';
         $output = ['some', 'tags', 'with', 'spaces,and', 'without'];

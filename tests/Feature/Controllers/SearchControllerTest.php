@@ -39,18 +39,18 @@ class SearchControllerTest extends TestCase
     /**
      *
      */
-    public function setUp()
+    public function setUp(): void
     {
         parent::setUp();
-        Log::debug(sprintf('Now in %s.', get_class($this)));
+        Log::debug(sprintf('Now in %s.', \get_class($this)));
     }
 
 
     /**
-     * @covers \FireflyIII\Http\Controllers\SearchController::index
-     * @covers \FireflyIII\Http\Controllers\SearchController::__construct
+     * @covers \FireflyIII\Http\Controllers\SearchController
+     * @covers \FireflyIII\Http\Controllers\SearchController
      */
-    public function testIndex()
+    public function testIndex(): void
     {
         $search = $this->mock(SearchInterface::class);
         $search->shouldReceive('parseQuery')->once();
@@ -62,10 +62,10 @@ class SearchControllerTest extends TestCase
     }
 
     /**
-     * @covers \FireflyIII\Http\Controllers\SearchController::search
-     * @covers \FireflyIII\Http\Controllers\SearchController::__construct
+     * @covers \FireflyIII\Http\Controllers\SearchController
+     * @covers \FireflyIII\Http\Controllers\SearchController
      */
-    public function testSearch()
+    public function testSearch(): void
     {
         $search = $this->mock(SearchInterface::class);
         $search->shouldReceive('parseQuery')->once();

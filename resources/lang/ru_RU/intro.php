@@ -1,8 +1,8 @@
 <?php
-declare(strict_types=1);
+
 /**
  * intro.php
- * Copyright (c) 2017 thegrumpydictator@gmail.com
+ * Copyright (c) 2018 thegrumpydictator@gmail.com
  *
  * This file is part of Firefly III.
  *
@@ -19,6 +19,8 @@ declare(strict_types=1);
  * You should have received a copy of the GNU General Public License
  * along with Firefly III. If not, see <http://www.gnu.org/licenses/>.
  */
+
+declare(strict_types=1);
 
 return [
     // index
@@ -91,6 +93,7 @@ return [
     'piggy-banks_show_piggyEvents'                            => 'Все добавления или изъятия денег из копилки показаны здесь.',
 
     // bill index
+    'bills_index_rules'                                       => 'Здесь вы видите, на соответствие каким правилам будет проверяться этот счёт на оплату',
     'bills_index_paid_in_period'                              => 'Это поле показывает, когда счёт был оплачен в последний раз.',
     'bills_index_expected_in_period'                          => 'Это поле указывает для каждого счета, когда ожидается следующая оплата по нему.',
 
@@ -100,14 +103,15 @@ return [
     'bills_show_billChart'                                    => 'Эта диаграмма отражает все операции по текущему счёту.',
 
     // create bill
+    'bills_create_intro'                                      => 'Используйте счета, чтобы отслеживать суммы денег, которое вы должны заплатить за каждый период. Подумайте о расходах, таких как аренда, страхование или ипотечные платежи.',
     'bills_create_name'                                       => 'Используйте понятные названия, например «Аренда» или «Расходы на лечение».',
-    'bills_create_match'                                      => 'Чтобы сопоставлять транзакции, используйте поля этих транзакций или счета расходов. Все слова должны совпадать.',
+    //'bills_create_match'                                      => 'To match transactions, use terms from those transactions or the expense account involved. All words must match.',
     'bills_create_amount_min_holder'                          => 'Выберите минимальную и максимальную сумму для этого счета.',
     'bills_create_repeat_freq_holder'                         => 'Обычно счета к оплате выставляются раз в месяц, но здесь вы можете указать другую периодичность.',
-    'bills_create_skip_holder'                                => 'Если счёт выставляется, например, каждые 2 недели, в поле "пропустить" нужно поставить "1", чтобы пропускать все прочие недели.',
+    'bills_create_skip_holder'                                => 'Если счёт выставляется каждые 2 недели, в поле "пропустить" нужно поставить "1", чтобы пропускать все прочие недели.',
 
     // rules index
-    'rules_index_intro'                                       => 'Firefly III позволяет вам использовать правилами, которые автоматически применяются к любой транзакции, которую вы создаёте или редактируете.',
+    'rules_index_intro'                                       => 'Firefly III позволяет вам использовать правила, автоматически применяющиеся к любой транзакции, которую вы создаёте или редактируете.',
     'rules_index_new_rule_group'                              => 'Вы можете комбинировать правила в группы, чтобы упростить управление ими.',
     'rules_index_new_rule'                                    => 'Создайте столько правил, сколько захотите.',
     'rules_index_prio_buttons'                                => 'Упорядочивайте их так, как вы считаете нужным.',

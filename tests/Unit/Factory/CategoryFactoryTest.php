@@ -24,6 +24,7 @@ declare(strict_types=1);
 namespace Tests\Unit\Factory;
 
 use FireflyIII\Factory\CategoryFactory;
+use Log;
 use Tests\TestCase;
 
 /**
@@ -31,10 +32,20 @@ use Tests\TestCase;
  */
 class CategoryFactoryTest extends TestCase
 {
+
+    /**
+     *
+     */
+    public function setUp(): void
+    {
+        parent::setUp();
+        Log::debug(sprintf('Now in %s.', \get_class($this)));
+    }
+
     /**
      * @covers \FireflyIII\Factory\CategoryFactory
      */
-    public function testFindOrCreateExistingID()
+    public function testFindOrCreateExistingID(): void
     {
         $existing = $this->user()->categories()->first();
 
@@ -48,7 +59,7 @@ class CategoryFactoryTest extends TestCase
     /**
      * @covers \FireflyIII\Factory\CategoryFactory
      */
-    public function testFindOrCreateExistingName()
+    public function testFindOrCreateExistingName(): void
     {
         $existing = $this->user()->categories()->first();
 
@@ -64,7 +75,7 @@ class CategoryFactoryTest extends TestCase
      *
      * @covers \FireflyIII\Factory\CategoryFactory
      */
-    public function testFindOrCreateInvalidID()
+    public function testFindOrCreateInvalidID(): void
     {
         $existing = $this->user()->categories()->max('id');
         $existing += 4;
@@ -78,9 +89,9 @@ class CategoryFactoryTest extends TestCase
     /**
      * @covers \FireflyIII\Factory\CategoryFactory
      */
-    public function testFindOrCreateNewName()
+    public function testFindOrCreateNewName(): void
     {
-        $name = 'Some new category #' . random_int(1, 1000);
+        $name = 'Some new category #' . random_int(1, 10000);
 
         /** @var CategoryFactory $factory */
         $factory = app(CategoryFactory::class);
@@ -92,7 +103,7 @@ class CategoryFactoryTest extends TestCase
     /**
      * @covers \FireflyIII\Factory\CategoryFactory
      */
-    public function testFindOrCreateNull()
+    public function testFindOrCreateNull(): void
     {
         /** @var CategoryFactory $factory */
         $factory = app(CategoryFactory::class);

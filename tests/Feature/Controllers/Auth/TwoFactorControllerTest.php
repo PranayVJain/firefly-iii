@@ -30,26 +30,22 @@ use Tests\TestCase;
 
 /**
  * Class TwoFactorControllerTest
- *
- * @SuppressWarnings(PHPMD.TooManyPublicMethods)
- * @SuppressWarnings(PHPMD.ExcessiveMethodLength)
- * @SuppressWarnings(PHPMD.CouplingBetweenObjects)
  */
 class TwoFactorControllerTest extends TestCase
 {
     /**
      *
      */
-    public function setUp()
+    public function setUp(): void
     {
         parent::setUp();
-        Log::debug(sprintf('Now in %s.', get_class($this)));
+        Log::debug(sprintf('Now in %s.', \get_class($this)));
     }
 
     /**
-     * @covers \FireflyIII\Http\Controllers\Auth\TwoFactorController::index
+     * @covers \FireflyIII\Http\Controllers\Auth\TwoFactorController
      */
-    public function testIndex()
+    public function testIndex(): void
     {
         $this->be($this->user());
 
@@ -57,27 +53,34 @@ class TwoFactorControllerTest extends TestCase
         $truePref->data         = true;
         $secretPreference       = new Preference;
         $secretPreference->data = 'JZMES376Z6YXY4QZ';
+        $langPreference         = new Preference;
+        $langPreference->data   = 'en_US';
 
         Preferences::shouldReceive('get')->withArgs(['twoFactorAuthEnabled', false])->andReturn($truePref)->twice();
         Preferences::shouldReceive('get')->withArgs(['twoFactorAuthSecret', null])->andReturn($secretPreference)->once();
         Preferences::shouldReceive('get')->withArgs(['twoFactorAuthSecret'])->andReturn($secretPreference)->once();
+        Preferences::shouldReceive('get')->withArgs(['language', 'en_US'])->andReturn($langPreference);
 
         $response = $this->get(route('two-factor.index'));
         $response->assertStatus(200);
     }
 
     /**
-     * @covers \FireflyIII\Http\Controllers\Auth\TwoFactorController::index
+     * @covers \FireflyIII\Http\Controllers\Auth\TwoFactorController
      */
-    public function testIndexNo2FA()
+    public function testIndexNo2FA(): void
     {
         $this->be($this->user());
 
         $falsePreference       = new Preference;
         $falsePreference->data = false;
+        $langPreference        = new Preference;
+        $langPreference->data  = 'en_US';
+
         Preferences::shouldReceive('get')->withArgs(['twoFactorAuthEnabled', false])->andReturn($falsePreference)->twice();
         Preferences::shouldReceive('get')->withArgs(['twoFactorAuthSecret', null])->andReturn(null)->once();
         Preferences::shouldReceive('get')->withArgs(['twoFactorAuthSecret'])->andReturn(null)->once();
+        Preferences::shouldReceive('get')->withArgs(['language', 'en_US'])->andReturn($langPreference);
 
         $response = $this->get(route('two-factor.index'));
         $response->assertStatus(302);
@@ -85,10 +88,10 @@ class TwoFactorControllerTest extends TestCase
     }
 
     /**
-     * @covers                   \FireflyIII\Http\Controllers\Auth\TwoFactorController::index
+     * @covers                   \FireflyIII\Http\Controllers\Auth\TwoFactorController
      * @expectedExceptionMessage Your two factor authentication secret is empty
      */
-    public function testIndexNoSecret()
+    public function testIndexNoSecret(): void
     {
         $this->be($this->user());
 
@@ -96,18 +99,22 @@ class TwoFactorControllerTest extends TestCase
         $truePref->data         = true;
         $secretPreference       = new Preference;
         $secretPreference->data = '';
+        $langPreference         = new Preference;
+        $langPreference->data   = 'en_US';
+
         Preferences::shouldReceive('get')->withArgs(['twoFactorAuthEnabled', false])->andReturn($truePref)->twice();
         Preferences::shouldReceive('get')->withArgs(['twoFactorAuthSecret', null])->andReturn($secretPreference)->once();
         Preferences::shouldReceive('get')->withArgs(['twoFactorAuthSecret'])->andReturn($secretPreference)->once();
+        Preferences::shouldReceive('get')->withArgs(['language', 'en_US'])->andReturn($langPreference);
 
         $response = $this->get(route('two-factor.index'));
         $response->assertStatus(500);
     }
 
     /**
-     * @covers \FireflyIII\Http\Controllers\Auth\TwoFactorController::lostTwoFactor
+     * @covers \FireflyIII\Http\Controllers\Auth\TwoFactorController
      */
-    public function testLostTwoFactor()
+    public function testLostTwoFactor(): void
     {
         $this->be($this->user());
 
@@ -115,18 +122,22 @@ class TwoFactorControllerTest extends TestCase
         $truePreference->data   = true;
         $secretPreference       = new Preference;
         $secretPreference->data = 'JZMES376Z6YXY4QZ';
+        $langPreference         = new Preference;
+        $langPreference->data   = 'en_US';
+
         Preferences::shouldReceive('get')->withArgs(['twoFactorAuthEnabled', false])->andReturn($truePreference);
         Preferences::shouldReceive('get')->withArgs(['twoFactorAuthSecret', null])->andReturn($secretPreference);
         Preferences::shouldReceive('get')->withArgs(['twoFactorAuthSecret'])->andReturn($secretPreference);
+        Preferences::shouldReceive('get')->withArgs(['language', 'en_US'])->andReturn($langPreference);
 
         $response = $this->get(route('two-factor.lost'));
         $response->assertStatus(200);
     }
 
     /**
-     * @covers \FireflyIII\Http\Controllers\Auth\TwoFactorController::postIndex
+     * @covers \FireflyIII\Http\Controllers\Auth\TwoFactorController
      */
-    public function testPostIndex()
+    public function testPostIndex(): void
     {
         $data = ['code' => '123456'];
         Google2FA::shouldReceive('verifyKey')->andReturn(true)->once();

@@ -24,7 +24,6 @@ declare(strict_types=1);
 namespace FireflyIII\Services\Spectre\Request;
 
 use FireflyIII\Exceptions\FireflyException;
-use FireflyIII\Services\Spectre\Exception\SpectreException;
 use FireflyIII\Services\Spectre\Object\Account;
 use FireflyIII\Services\Spectre\Object\Transaction;
 use Log;
@@ -41,7 +40,7 @@ class ListTransactionsRequest extends SpectreRequest
 
     /**
      * @throws FireflyException
-     * @throws SpectreException
+     * @SuppressWarnings(PHPMD.CyclomaticComplexity)
      */
     public function call(): void
     {
@@ -50,11 +49,11 @@ class ListTransactionsRequest extends SpectreRequest
         while ($hasNextPage) {
             Log::debug(sprintf('Now calling ListTransactionsRequest for next_id %d', $nextId));
             $parameters = ['from_id' => $nextId, 'account_id' => $this->account->getId()];
-            $uri        = '/api/v3/transactions?' . http_build_query($parameters);
+            $uri        = '/api/v4/transactions?' . http_build_query($parameters);
             $response   = $this->sendSignedSpectreGet($uri, []);
 
             // count entries:
-            Log::debug(sprintf('Found %d entries in data-array', count($response['data'])));
+            Log::debug(sprintf('Found %d entries in data-array', \count($response['data'])));
 
             // extract next ID
             $hasNextPage = false;
@@ -62,8 +61,6 @@ class ListTransactionsRequest extends SpectreRequest
                 $hasNextPage = true;
                 $nextId      = $response['meta']['next_id'];
                 Log::debug(sprintf('Next ID is now %d.', $nextId));
-            } else {
-                Log::debug('No next page, done with ListTransactionsRequest.');
             }
 
             // store customers:

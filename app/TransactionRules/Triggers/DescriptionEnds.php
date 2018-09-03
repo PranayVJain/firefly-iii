@@ -42,11 +42,11 @@ final class DescriptionEnds extends AbstractTrigger implements TriggerInterface
      * (even if it will still include 99.9% of the users transactions), this method MUST return
      * false.
      *
-     * @param null $value
+     * @param mixed $value
      *
      * @return bool
      */
-    public static function willMatchEverything($value = null)
+    public static function willMatchEverything($value = null): bool
     {
         if (null !== $value) {
             $res = '' === (string)$value;
@@ -72,9 +72,9 @@ final class DescriptionEnds extends AbstractTrigger implements TriggerInterface
     public function triggered(TransactionJournal $journal): bool
     {
         $description       = strtolower($journal->description ?? '');
-        $descriptionLength = strlen($description);
+        $descriptionLength = \strlen($description);
         $search            = strtolower($this->triggerValue);
-        $searchLength      = strlen($search);
+        $searchLength      = \strlen($search);
 
         // if the string to search for is longer than the description,
         // return false.
